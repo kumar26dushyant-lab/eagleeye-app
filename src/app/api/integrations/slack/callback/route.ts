@@ -87,12 +87,14 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error('Failed to store integration:', dbError)
-      // Still redirect to success - token exchange worked
+      return NextResponse.redirect(
+        new URL(`/dashboard/integrations?error=${encodeURIComponent(dbError.message)}`, request.url)
+      )
     }
 
-    // Clear the state cookie
+    // Clear the state cookie and redirect to integrations page
     const response = NextResponse.redirect(
-      new URL('/dashboard/setup?connected=slack', request.url)
+      new URL('/dashboard/integrations?connected=slack', request.url)
     )
     response.cookies.delete('slack_oauth_state')
     

@@ -32,6 +32,8 @@ function IntegrationsContent() {
   const searchParams = useSearchParams()
   const isWelcome = searchParams.get('welcome') === 'true'
   const tier = searchParams.get('tier')
+  const connectedProvider = searchParams.get('connected')
+  const errorMessage = searchParams.get('error')
   
   const [showWelcome, setShowWelcome] = useState(isWelcome)
   const [tools, setTools] = useState<ToolConfig[]>([
@@ -111,6 +113,26 @@ function IntegrationsContent() {
   useEffect(() => {
     fetchStatus()
   }, [])
+
+  // Handle OAuth callback success/error messages
+  useEffect(() => {
+    if (connectedProvider) {
+      const providerName = connectedProvider.charAt(0).toUpperCase() + connectedProvider.slice(1)
+      toast.success(`${providerName} connected successfully!`, {
+        description: 'Your integration is now active',
+      })
+      // Clear the URL params
+      window.history.replaceState({}, '', '/dashboard/integrations')
+      // Refresh status to show the new connection
+      fetchStatus()
+    }
+    if (errorMessage) {
+      toast.error('Connection failed', {
+        description: errorMessage,
+      })
+      window.history.replaceState({}, '', '/dashboard/integrations')
+    }
+  }, [connectedProvider, errorMessage])
 
   const handleRefresh = () => {
     setIsRefreshing(true)

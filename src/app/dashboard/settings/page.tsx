@@ -109,11 +109,23 @@ export default function SettingsPage() {
               mode={(settings?.default_intent_mode as IntentMode) || 'calm'}
               onModeChange={(mode) => updateSetting('default_intent_mode', mode)}
             />
-            <div className="mt-4 text-sm text-muted-foreground">
-              <p>🧘 <strong>Calm:</strong> Critical only</p>
-              <p>🚶 <strong>On-the-Go:</strong> Quick summary</p>
-              <p>💼 <strong>Work:</strong> Full context</p>
-              <p>🎯 <strong>Focus:</strong> Blockers only</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                <p className="font-medium">🏖️ Calm <span className="text-xs text-muted-foreground ml-2">Vacation mode</span></p>
+                <p className="text-muted-foreground text-xs mt-1">Only blockers, escalations & critical decisions. Perfect for time off.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                <p className="font-medium">🚗 On-the-Go <span className="text-xs text-muted-foreground ml-2">Commute mode</span></p>
+                <p className="text-muted-foreground text-xs mt-1">Critical items + team wins & kudos. Quick catch-up while moving.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
+                <p className="font-medium">💼 Work <span className="text-xs text-muted-foreground ml-2">Daily driver</span></p>
+                <p className="text-muted-foreground text-xs mt-1">All actionable signals: mentions, questions, blockers + positivity.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                <p className="font-medium">🎯 Focus <span className="text-xs text-muted-foreground ml-2">Deep work</span></p>
+                <p className="text-muted-foreground text-xs mt-1">Only blockers & urgent items + your milestones for motivation.</p>
+              </div>
             </div>
           </CardContent>
         </Card>

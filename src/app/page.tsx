@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, Eye, Shield, Zap, Volume2, Sparkles, Check, Play, ChevronRight, ExternalLink } from 'lucide-react'
 import { useRef } from 'react'
 import { Logo } from '@/components/brand/Logo'
+import { InquirySection } from '@/components/home/InquirySection'
 
 // Animated gradient orb component
 function GradientOrb({ className }: { className?: string }) {
@@ -92,6 +93,12 @@ export default function Home() {
             >
               Pricing
             </Link>
+            <a
+              href="#inquiry"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+            >
+              Contact
+            </a>
             <Link
               href="/login"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -201,14 +208,16 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </motion.button>
                 </Link>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-8 py-4 border border-border rounded-xl font-medium text-lg hover:bg-muted/50 transition-colors"
-                >
-                  <Play className="h-5 w-5" />
-                  Watch Demo
-                </motion.button>
+                <a href="#demo-video">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-8 py-4 border border-border rounded-xl font-medium text-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <Play className="h-5 w-5" />
+                    See How It Works
+                  </motion.button>
+                </a>
               </motion.div>
 
               {/* Privacy Trust Badge */}
@@ -399,22 +408,22 @@ export default function Home() {
             >
               {[
                 {
-                  stat: "56%",
-                  insight: "of workers feel overwhelmed by the number of apps they use daily",
-                  source: "Harvard Business Review",
-                  link: "https://hbr.org/2022/08/the-collaboration-overload"
+                  stat: "10",
+                  insight: "apps used per day — constant app-switching destroys focus and productivity",
+                  source: "Asana Anatomy of Work 2023 (9,615 workers)",
+                  link: "https://asana.com/resources/anatomy-of-work"
                 },
                 {
-                  stat: "40%",
-                  insight: "of productivity is lost to task-switching between tools",
-                  source: "American Psychological Association",
-                  link: "https://www.apa.org/topics/research/multitasking"
+                  stat: "62%",
+                  insight: "of the workday lost to repetitive, mundane tasks instead of strategic work",
+                  source: "Asana Anatomy of Work 2023",
+                  link: "https://asana.com/resources/anatomy-of-work"
                 },
                 {
-                  stat: "23 min",
-                  insight: "to refocus after a single interruption",
-                  source: "UC Irvine Research",
-                  link: "https://www.ics.uci.edu/~gmark/chi08-mark.pdf"
+                  stat: "5.3 hrs",
+                  insight: "per week spent waiting for information or tracking down colleagues who have it",
+                  source: "Panopto Workplace Knowledge Study",
+                  link: "https://www.panopto.com/resource/valuing-workplace-knowledge/"
                 }
               ].map((item, index) => (
                 <motion.a
@@ -531,6 +540,69 @@ export default function Home() {
               <p className="text-5xl font-bold text-green-400 mb-2">10+ hours/week</p>
               <p className="text-muted-foreground">That&apos;s <span className="text-foreground font-semibold">500+ hours per year</span> back in your calendar</p>
             </motion.div>
+          </div>
+        </section>
+
+        {/* DEMO VIDEO SECTION */}
+        <section id="demo-video" className="py-24 px-6 lg:px-12 relative">
+          <div className="max-w-[1000px] mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-10"
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                See EagleEye in Action
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+                Watch how EagleEye transforms your chaotic mornings into focused productivity
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-video bg-card/50 border border-border rounded-2xl overflow-hidden shadow-2xl"
+            >
+              {/* Replace this with your actual video embed */}
+              {/* Option 1: YouTube embed */}
+              {/* <iframe 
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
+                title="EagleEye Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              /> */}
+              
+              {/* Option 2: Loom embed */}
+              {/* <iframe 
+                className="w-full h-full"
+                src="https://www.loom.com/embed/YOUR_LOOM_ID"
+                allowFullScreen
+              /> */}
+
+              {/* Placeholder until video is ready */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10">
+                <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-4 border-2 border-primary/50">
+                  <Play className="h-8 w-8 text-primary ml-1" />
+                </div>
+                <p className="text-lg font-medium text-foreground mb-2">Demo Video Coming Soon</p>
+                <p className="text-sm text-muted-foreground max-w-md text-center px-4">
+                  We&apos;re preparing an end-to-end walkthrough showing how EagleEye saves you hours every day
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-center text-sm text-muted-foreground mt-4"
+            >
+              🎬 2-minute walkthrough • No signup required to watch
+            </motion.p>
           </div>
         </section>
 
@@ -687,6 +759,9 @@ export default function Home() {
             </motion.div>
           </div>
         </section>
+
+        {/* Inquiry Section */}
+        <InquirySection />
 
         {/* Final CTA - Full width banner */}
         <section className="py-32 px-6 lg:px-12 relative overflow-hidden">

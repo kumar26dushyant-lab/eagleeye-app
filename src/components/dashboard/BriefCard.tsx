@@ -77,60 +77,15 @@ export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
       transition={{ delay: 0.1 }}
     >
       <Card className="bg-gradient-to-br from-card to-muted/20 border-border overflow-hidden">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Calendar className="h-5 w-5 text-primary" />
-              {today}
-            </CardTitle>
+        <CardContent className="p-4 space-y-3">
+          {/* Mode Badge & Message */}
+          <div className="space-y-2">
             <Badge variant="outline" className="capitalize">
               {mode.replace('_', ' ')} mode
             </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Main Message */}
-          <p className="text-foreground font-medium">
-            {getModeMessage()}
-          </p>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Needs Attention */}
-            <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/20">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <span className="text-xs text-muted-foreground">Action Needed</span>
-              </div>
-              <p className="text-2xl font-bold text-red-500">{stats.needsAttention}</p>
-            </div>
-
-            {/* Messages */}
-            <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
-              <div className="flex items-center gap-2 mb-1">
-                <MessageSquare className="h-4 w-4 text-blue-500" />
-                <span className="text-xs text-muted-foreground">Messages</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-500">{stats.signals}</p>
-            </div>
-
-            {/* FYI / In Progress */}
-            <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/20">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-4 w-4 text-amber-500" />
-                <span className="text-xs text-muted-foreground">In Progress</span>
-              </div>
-              <p className="text-2xl font-bold text-amber-500">{stats.fyi}</p>
-            </div>
-
-            {/* Team Coverage */}
-            <div className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span className="text-xs text-muted-foreground">Team Handled</span>
-              </div>
-              <p className="text-2xl font-bold text-green-500">{stats.handled}</p>
-            </div>
+            <p className="text-sm text-foreground">
+              {getModeMessage()}
+            </p>
           </div>
 
           {/* Coverage Bar */}
@@ -139,7 +94,7 @@ export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
               <span>Team coverage</span>
               <span>{stats.coveragePercentage}%</span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
                 initial={{ width: 0 }}
@@ -147,9 +102,6 @@ export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
                 transition={{ delay: 0.3, duration: 0.8 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Your team is handling {stats.coveragePercentage}% of work without needing your input
-            </p>
           </div>
         </CardContent>
       </Card>

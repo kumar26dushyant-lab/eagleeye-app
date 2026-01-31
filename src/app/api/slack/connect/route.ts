@@ -11,10 +11,10 @@ export async function GET() {
   const scopes = [
     'channels:read',
     'channels:history',
+    'channels:join',
     'users:read',
     'users:read.email',
-    'chat:write',
-    'im:write',
+    'team:read',
   ].join(',')
 
   const authUrl = new URL('https://slack.com/oauth/v2/authorize')
@@ -22,5 +22,6 @@ export async function GET() {
   authUrl.searchParams.set('redirect_uri', redirectUri)
   authUrl.searchParams.set('scope', scopes)
 
-  return NextResponse.json({ url: authUrl.toString() })
+  // Redirect directly to Slack OAuth
+  return NextResponse.redirect(authUrl.toString())
 }

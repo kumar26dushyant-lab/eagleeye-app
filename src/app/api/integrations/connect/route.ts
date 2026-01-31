@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
         provider,
         access_token: token, // In production: encrypt this!
         workspace_name: workspace,
-        connected_at: new Date().toISOString(),
         is_active: true,
+        last_sync_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id,provider',
       })

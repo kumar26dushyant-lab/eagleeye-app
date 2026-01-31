@@ -56,25 +56,29 @@ export function getThreshold(mode: IntentMode): number {
   }
 }
 
-export const MODE_CONFIG: Record<IntentMode, { icon: string; label: string; description: string }> = {
+export const MODE_CONFIG: Record<IntentMode, { icon: string; label: string; description: string; longDescription: string }> = {
   calm: {
     icon: '🏖️',
     label: 'Calm',
-    description: 'Critical only (vacation)',
+    description: 'Emergencies only',
+    longDescription: 'Perfect for vacation or time off. Only blockers, escalations, and critical decisions that truly need you.',
   },
   on_the_go: {
     icon: '🚗',
     label: 'On-the-Go',
-    description: 'Critical + high (commute)',
+    description: 'Critical + celebrations',
+    longDescription: 'Ideal for commuting or quick check-ins. Critical items plus team wins and kudos to boost morale.',
   },
   work: {
     icon: '💼',
     label: 'Work',
-    description: 'Standard (default)',
+    description: 'Full actionable view',
+    longDescription: 'Your daily driver. All actionable signals, questions, mentions, plus team appreciation and wins.',
   },
   focus: {
     icon: '🎯',
     label: 'Focus',
-    description: 'Full snapshot (pre-meeting)',
+    description: 'Deep work mode',
+    longDescription: 'For heads-down work. Only blockers, urgent items, and your milestones for motivation.',
   },
 }

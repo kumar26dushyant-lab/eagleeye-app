@@ -17,8 +17,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(), // Optional for client-only ops
   
-  // OpenAI
-  OPENAI_API_KEY: z.string().startsWith('sk-').optional(),
+  // AI - Google Gemini (preferred) or OpenAI (legacy)
+  GOOGLE_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(), // Alias for GOOGLE_API_KEY
+  OPENAI_API_KEY: z.string().startsWith('sk-').optional(), // Legacy support
   
   // ElevenLabs
   ELEVENLABS_API_KEY: z.string().optional(),
@@ -104,7 +106,7 @@ export function isIntegrationConfigured(provider: string): boolean {
 
 export function isAIConfigured(): boolean {
   const env = getEnv()
-  return !!env.OPENAI_API_KEY
+  return !!(env.GOOGLE_API_KEY || env.GEMINI_API_KEY || env.OPENAI_API_KEY)
 }
 
 export function isAudioConfigured(): boolean {
@@ -126,6 +128,11 @@ export function getSupabaseAnonKey(): string {
 
 export function getAppUrl(): string {
   return getEnv().NEXT_PUBLIC_APP_URL
+}
+
+export function getGoogleAIKey(): string | undefined {
+  const env = getEnv()
+  return env.GOOGLE_API_KEY || env.GEMINI_API_KEY
 }
 
 export function getOpenAIKey(): string | undefined {

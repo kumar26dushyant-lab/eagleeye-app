@@ -127,8 +127,17 @@ export class SlackAdapter implements IntegrationAdapter {
       for (const message of history.messages) {
         if (!message.text || !message.ts || message.subtype) continue
 
+        // IMPORTANT: Skip noise/trivial messages BEFORE classifying
+        if (this.isNoiseMessage(message.text)) {
+          continue
+        }
+
         // Classify the message
         const { category, confidence } = this.classifyMessage(message.text)
+        
+        // Only include signals with meaningful confidence
+        // This filters out low-value "update" signals
+        if (confidence < 0.5) continue
         
         // Get sender info
         const sender = message.user ? await this.getUserInfo(message.user) : null
@@ -169,48 +178,117 @@ export class SlackAdapter implements IntegrationAdapter {
   }
 
   /**
+   * Check if a message is noise/trivial and should be filtered out
+   * EagleEye's core value: ONLY surface actionable signals, not chit-chat
+   */
+  private isNoiseMessage(text: string): boolean {
+    const lower = text.toLowerCase().trim()
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length
+    
+    // FILTER OUT: Very short messages (under 4 words) unless they have urgency signals
+    if (wordCount < 4) {
+      const hasUrgency = /urgent|asap|critical|blocked|help|deadline/.test(lower)
+      if (!hasUrgency) return true
+    }
+    
+    // FILTER OUT: Pure greetings and pleasantries
+    const NOISE_PATTERNS = [
+      /^(hi|hey|hello|yo|sup|hiya|howdy)[\s!.,]*$/i,
+      /^(hi|hey|hello)\s+(there|all|everyone|team|folks)[\s!.,]*$/i,
+      /^good\s+(morning|afternoon|evening|night)[\s!.,]*$/i,
+      /^(thanks|thank you|thx|ty)[\s!.,]*$/i,
+      /^(ok|okay|k|kk|cool|great|nice|awesome|perfect|sounds good|got it|noted|ack)[\s!.,]*$/i,
+      /^(yes|no|yep|nope|yeah|nah|sure|yup)[\s!.,]*$/i,
+      /^(👍|👎|✅|❌|🎉|😊|🙏|💯|🔥|👀|😄|😂|🤣|lol|lmao|haha)+$/i,
+      /^(brb|bbl|gtg|ttyl|afk|omw)[\s!.,]*$/i,
+      /^i'?m\s+(here|back|around|online|available)[\s!.,]*$/i,
+      /^(good to see you|nice to see you|glad you'?re here)[\s!.,]*$/i,
+      /^(bye|goodbye|cya|see ya|later|have a good one)[\s!.,]*$/i,
+      /^(morning|afternoon)[\s!.,]*$/i,
+      /^welcome[\s!.,]*$/i,
+      /^(happy|glad)\s+to\s+(help|assist)[\s!.,]*$/i,
+      /^(no problem|no worries|np|nw|anytime)[\s!.,]*$/i,
+      /^same[\s!.,]*$/i,
+      /^(agreed|exactly|right|true|indeed)[\s!.,]*$/i,
+      /^\+1[\s!.,]*$/i,
+      /^(what'?s up|how'?s it going|how are you)[\s!.,?]*$/i,
+    ]
+    
+    for (const pattern of NOISE_PATTERNS) {
+      if (pattern.test(lower)) return true
+    }
+    
+    // FILTER OUT: Messages that are just reactions/acknowledgements with nothing actionable
+    // These often slip through: "awesome thanks!", "nice work!", "sounds good to me!"
+    const ACKNOWLEDGEMENT_ONLY = /^(that'?s\s+)?(awesome|amazing|great|nice|cool|perfect|excellent|wonderful|fantastic|brilliant)\s*(work|job|stuff)?[\s!.,]*$/i
+    if (ACKNOWLEDGEMENT_ONLY.test(lower)) return true
+    
+    return false
+  }
+
+  /**
    * Classify a message into a signal category
    * This is the "intelligence" layer
    */
   private classifyMessage(text: string): { category: SignalCategory; confidence: number } {
     const lower = text.toLowerCase()
 
-    // High confidence patterns
-    if (lower.includes('blocked') || lower.includes('stuck') || lower.includes("can't proceed")) {
+    // High confidence patterns - clear signals
+    if (lower.includes('blocked') || lower.includes('stuck') || lower.includes("can't proceed") || lower.includes('cannot proceed')) {
       return { category: 'blocker', confidence: 0.9 }
     }
     
-    if (lower.includes('approve') || lower.includes('sign off') || lower.includes('decision needed')) {
+    if (lower.includes('approve') || lower.includes('sign off') || lower.includes('decision needed') || lower.includes('need your input')) {
       return { category: 'decision', confidence: 0.85 }
     }
 
-    if (lower.includes('urgent') || lower.includes('asap') || lower.includes('immediately')) {
+    if (lower.includes('urgent') || lower.includes('asap') || lower.includes('immediately') || lower.includes('critical') || lower.includes('p0') || lower.includes('p1')) {
       return { category: 'escalation', confidence: 0.85 }
     }
 
-    // Medium confidence patterns
-    if (text.includes('@') || lower.includes('hey ') || lower.includes('hi ')) {
-      // Check if it's a direct mention with task
-      if (lower.includes('can you') || lower.includes('could you') || lower.includes('please')) {
-        return { category: 'commitment', confidence: 0.7 }
-      }
-      return { category: 'mention', confidence: 0.75 }
-    }
-
-    if (text.includes('?') || lower.includes('what') || lower.includes('how') || lower.includes('when')) {
-      return { category: 'question', confidence: 0.7 }
-    }
-
-    if (lower.includes('deadline') || lower.includes('due') || lower.includes('by eod') || lower.includes('by end of')) {
+    // Medium confidence patterns - need more context
+    if (lower.includes('deadline') || lower.includes('due') || lower.includes('by eod') || lower.includes('by end of') || lower.includes('by friday') || lower.includes('by monday')) {
       return { category: 'deadline', confidence: 0.75 }
     }
 
-    if (lower.includes('fyi') || lower.includes('heads up') || lower.includes('just letting you know')) {
-      return { category: 'update', confidence: 0.8 }
+    // Questions that actually need answers (not rhetorical)
+    if ((text.includes('?') && (lower.includes('can you') || lower.includes('could you') || lower.includes('would you') || lower.includes('do you know') || lower.includes('any update')))) {
+      return { category: 'question', confidence: 0.7 }
     }
 
-    // Default to update with low confidence
-    return { category: 'update', confidence: 0.3 }
+    // Direct mentions with actionable content
+    if (text.includes('@')) {
+      // Must have some substance beyond just the mention
+      const hasProblem = lower.includes('issue') || lower.includes('problem') || lower.includes('error') || lower.includes('bug')
+      const hasAsk = lower.includes('can you') || lower.includes('could you') || lower.includes('please') || lower.includes('need')
+      const hasUpdate = lower.includes('update') || lower.includes('status') || lower.includes('progress')
+      
+      if (hasProblem || hasAsk || hasUpdate) {
+        return { category: 'mention', confidence: 0.75 }
+      }
+      // Mentions without clear action = low confidence
+      return { category: 'mention', confidence: 0.4 }
+    }
+
+    // Commitments - someone saying they'll do something
+    if (lower.includes("i'll") || lower.includes("i will") || lower.includes("will have") || lower.includes("will get")) {
+      if (lower.includes('ready') || lower.includes('done') || lower.includes('finished') || lower.includes('completed')) {
+        return { category: 'commitment', confidence: 0.7 }
+      }
+    }
+
+    // General questions
+    if (text.includes('?') && (lower.includes('what') || lower.includes('how') || lower.includes('when') || lower.includes('where') || lower.includes('who'))) {
+      return { category: 'question', confidence: 0.55 }
+    }
+
+    // FYI/updates - only if explicitly marked
+    if (lower.includes('fyi') || lower.includes('heads up') || lower.includes('just letting you know') || lower.includes('update:')) {
+      return { category: 'update', confidence: 0.65 }
+    }
+
+    // Default to update with very low confidence - these get filtered
+    return { category: 'update', confidence: 0.25 }
   }
 
   /**

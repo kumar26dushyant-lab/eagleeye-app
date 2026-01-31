@@ -47,27 +47,47 @@ function toLeagcySignal(signal: UnifiedSignal) {
 }
 
 // Filter signals based on intent mode
+// EagleEye's core value: Each mode should ONLY show what's truly important for that context
 function filterByMode(signals: UnifiedSignal[], mode: IntentMode): UnifiedSignal[] {
   switch (mode) {
     case 'calm':
-      // Only critical - blockers, decisions, escalations
+      // VACATION MODE: Only life-or-death situations
+      // Only critical - blockers, decisions, escalations with HIGH confidence
       return signals.filter(s => 
-        ['blocker', 'decision', 'escalation'].includes(s.category) && s.confidence >= 0.7
+        ['blocker', 'decision', 'escalation'].includes(s.category) && s.confidence >= 0.8
       )
     case 'on_the_go':
-      // High priority - mentions, blockers, decisions, deadlines
+      // COMMUTE MODE: Critical + important asks
+      // High priority - blockers, decisions, escalations, and direct actionable mentions
       return signals.filter(s => 
-        ['mention', 'blocker', 'decision', 'deadline', 'escalation'].includes(s.category)
+        (['blocker', 'decision', 'escalation'].includes(s.category) && s.confidence >= 0.7) ||
+        (['mention', 'deadline'].includes(s.category) && s.confidence >= 0.75)
       )
     case 'focus':
-      // Blockers and deadlines only
+      // DEEP WORK MODE: Only things that could derail your work
+      // Blockers and imminent deadlines only
       return signals.filter(s => 
-        ['blocker', 'deadline'].includes(s.category) && s.confidence >= 0.6
+        ['blocker', 'deadline', 'escalation'].includes(s.category) && s.confidence >= 0.7
       )
     case 'work':
     default:
-      // Everything
-      return signals
+      // STANDARD MODE: Actionable signals only
+      // Filter out low-confidence and pure FYI/updates unless they're high quality
+      return signals.filter(s => {
+        // Always show blockers, decisions, escalations
+        if (['blocker', 'decision', 'escalation'].includes(s.category)) {
+          return s.confidence >= 0.6
+        }
+        // Show mentions, questions, commitments with decent confidence
+        if (['mention', 'question', 'commitment', 'deadline'].includes(s.category)) {
+          return s.confidence >= 0.65
+        }
+        // Updates/FYI only if explicitly marked and high confidence
+        if (s.category === 'update') {
+          return s.confidence >= 0.7
+        }
+        return false
+      })
   }
 }
 

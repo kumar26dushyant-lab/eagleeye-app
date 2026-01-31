@@ -1,9 +1,20 @@
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { WorkItem, CommunicationSignal, IntentMode } from '@/types'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid errors if key is missing
+let geminiClient: GoogleGenerativeAI | null = null
+
+function getGemini(): GoogleGenerativeAI | null {
+  // Support both Gemini and OpenAI keys for backward compatibility
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return null
+  }
+  if (!geminiClient) {
+    geminiClient = new GoogleGenerativeAI(apiKey)
+  }
+  return geminiClient
+}
 
 interface BriefInput {
   needsAttention: WorkItem[]
@@ -53,23 +64,43 @@ Generate a brief (max 150 words) that:
 
 Do NOT use bullet points or lists. Write in flowing prose suitable for audio playback.`
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are EagleEye, a professional executive assistant that provides concise daily briefs. Be direct, confident, and actionable. Never use filler words or unnecessary pleasantries.',
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-    max_tokens: 300,
-    temperature: 0.7,
-  })
+  // Check if Gemini is available
+  const gemini = getGemini()
+  if (!gemini) {
+    console.log('[AI] Gemini not configured, using fallback brief')
+    return generateFallbackBrief(input)
+  }
 
-  return response.choices[0]?.message?.content || generateFallbackBrief(input)
+  try {
+    const model = gemini.getGenerativeModel({ 
+      model: 'gemini-1.5-flash', // Fast and efficient for text generation
+      generationConfig: {
+        maxOutputTokens: 300,
+        temperature: 0.7,
+      },
+    })
+
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `You are EagleEye, a professional executive assistant that provides concise daily briefs. Be direct, confident, and actionable. Never use filler words or unnecessary pleasantries.\n\n${prompt}`,
+            },
+          ],
+        },
+      ],
+    })
+
+    const response = result.response
+    const text = response.text()
+    
+    return text || generateFallbackBrief(input)
+  } catch (error) {
+    console.error('[AI] Gemini error, using fallback:', error)
+    return generateFallbackBrief(input)
+  }
 }
 
 function getGreeting(): string {

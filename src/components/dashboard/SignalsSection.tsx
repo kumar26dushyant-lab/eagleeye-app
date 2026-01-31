@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { MessageSquare, AtSign, AlertCircle, HelpCircle, Bell, Mail, Search, Hash, ExternalLink, Slack, CheckSquare, Target, Calendar } from 'lucide-react'
+import { MessageSquare, AtSign, AlertCircle, HelpCircle, Bell, Mail, Search, Hash, ExternalLink, Slack, CheckSquare, Target, Calendar, Heart, PartyPopper, Trophy, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CommunicationSignal } from '@/types'
@@ -17,6 +17,12 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
   question: <HelpCircle className="h-4 w-4" />,
   escalation: <AlertCircle className="h-4 w-4" />,
   fyi: <Bell className="h-4 w-4" />,
+  blocker: <AlertCircle className="h-4 w-4" />,
+  decision_needed: <HelpCircle className="h-4 w-4" />,
+  // Positive signals
+  kudos: <Heart className="h-4 w-4" />,
+  celebration: <PartyPopper className="h-4 w-4" />,
+  milestone: <Trophy className="h-4 w-4" />,
 }
 
 const SIGNAL_COLORS: Record<string, string> = {
@@ -25,6 +31,12 @@ const SIGNAL_COLORS: Record<string, string> = {
   question: 'text-amber-500',
   escalation: 'text-red-500',
   fyi: 'text-muted-foreground',
+  blocker: 'text-red-500',
+  decision_needed: 'text-orange-500',
+  // Positive signals - warm colors
+  kudos: 'text-pink-500',
+  celebration: 'text-green-500',
+  milestone: 'text-yellow-500',
 }
 
 // Detection method icons and labels
@@ -225,12 +237,21 @@ export function SignalsSection({ signals, isLoading }: SignalsSectionProps) {
                   className={`shrink-0 capitalize text-xs ${
                     signal.signal_type === 'urgent' ? 'border-red-500/50 text-red-500' :
                     signal.signal_type === 'escalation' ? 'border-red-500/50 text-red-500' :
+                    signal.signal_type === 'blocker' ? 'border-red-500/50 text-red-500' :
                     signal.signal_type === 'mention' ? 'border-blue-500/50 text-blue-500' :
                     signal.signal_type === 'question' ? 'border-amber-500/50 text-amber-500' :
+                    signal.signal_type === 'decision_needed' ? 'border-orange-500/50 text-orange-500' :
+                    // Positive signals
+                    signal.signal_type === 'kudos' ? 'border-pink-500/50 text-pink-500 bg-pink-500/10' :
+                    signal.signal_type === 'celebration' ? 'border-green-500/50 text-green-500 bg-green-500/10' :
+                    signal.signal_type === 'milestone' ? 'border-yellow-500/50 text-yellow-500 bg-yellow-500/10' :
                     ''
                   }`}
                 >
-                  {signal.signal_type}
+                  {signal.signal_type === 'kudos' ? '🙏 Kudos' :
+                   signal.signal_type === 'celebration' ? '🎉 Win' :
+                   signal.signal_type === 'milestone' ? '🏆 Milestone' :
+                   signal.signal_type}
                 </Badge>
                 {/* Source icon */}
                 <div className="text-muted-foreground">

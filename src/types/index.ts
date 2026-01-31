@@ -9,7 +9,7 @@ export type CommunicationProvider = 'slack' | 'teams' | 'asana' | 'linear' | 'ji
 
 export type Urgency = 'high' | 'medium' | 'low'
 
-export type SignalType = 'mention' | 'urgent' | 'question' | 'escalation' | 'fyi' | 'blocker' | 'decision_needed'
+export type SignalType = 'mention' | 'urgent' | 'question' | 'escalation' | 'fyi' | 'blocker' | 'decision_needed' | 'kudos' | 'celebration' | 'milestone'
 
 export type DetectionMethod = 'channel_monitor' | 'direct_mention' | 'email_alias' | 'keyword' | 'asana_task' | 'linear_issue' | 'jira_ticket'
 

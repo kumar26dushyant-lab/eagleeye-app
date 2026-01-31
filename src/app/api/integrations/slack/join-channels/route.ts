@@ -10,7 +10,7 @@ async function getSlackClient(userId: string | null, supabase: ReturnType<typeof
       .select('access_token')
       .eq('user_id', userId)
       .eq('provider', 'slack')
-      .eq('status', 'active')
+      .eq('is_active', true)
       .single()
 
     if (integration?.access_token) {

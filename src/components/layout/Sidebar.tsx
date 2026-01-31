@@ -10,7 +10,8 @@ import {
   LogOut,
   Menu,
   X,
-  CreditCard
+  CreditCard,
+  HelpCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
+  { href: '/dashboard/support', label: 'Support', icon: HelpCircle },
 ]
 
 export function Sidebar() {

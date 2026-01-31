@@ -20,7 +20,7 @@ export async function GET() {
     .select('access_token')
     .eq('user_id', user.id)
     .eq('provider', 'slack')
-    .eq('status', 'active')
+    .eq('is_active', true)
     .single()
 
   if (integration?.access_token) {

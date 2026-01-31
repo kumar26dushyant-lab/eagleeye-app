@@ -148,6 +148,38 @@ export const SIGNAL_TYPES = {
     baseScore: 0.85,
     description: 'Approaching or missed deadline',
   },
+  decision_needed: {
+    id: 'decision_needed',
+    label: 'Decision',
+    icon: '🤔',
+    baseScore: 0.8,
+    description: 'Decision or approval needed',
+  },
+  // Positive signal types
+  kudos: {
+    id: 'kudos',
+    label: 'Kudos',
+    icon: '🙏',
+    baseScore: 0.6,
+    description: 'Recognition or appreciation',
+    category: 'positive',
+  },
+  celebration: {
+    id: 'celebration',
+    label: 'Celebration',
+    icon: '🎉',
+    baseScore: 0.65,
+    description: 'Team win or announcement',
+    category: 'positive',
+  },
+  milestone: {
+    id: 'milestone',
+    label: 'Milestone',
+    icon: '🏆',
+    baseScore: 0.55,
+    description: 'Project milestone achieved',
+    category: 'positive',
+  },
 } as const
 
 export type SignalTypeKey = keyof typeof SIGNAL_TYPES

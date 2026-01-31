@@ -23,6 +23,8 @@ const TOOL_CONFIG: Record<string, {
   steps: Array<{ title: string; description: string; link?: string }>
   testEndpoint: string
   placeholder: string
+  useOAuth?: boolean  // Use OAuth flow instead of token input
+  oauthEndpoint?: string
 }> = {
   slack: {
     tokenName: 'Bot Token',
@@ -32,20 +34,16 @@ const TOOL_CONFIG: Record<string, {
     steps: [
       {
         title: 'Open Slack App Settings',
-        description: 'Click below to open Slack API (create new app if needed)',
+        description: 'Go to your Slack App\'s OAuth & Permissions page',
         link: 'https://api.slack.com/apps',
       },
       {
-        title: 'Select Your App',
-        description: 'Click on your app (or create one: "Create New App" → "From scratch")',
+        title: 'Find Bot Token',
+        description: 'Under "OAuth Tokens for Your Workspace", copy the Bot User OAuth Token (starts with xoxb-)',
       },
       {
-        title: 'Get Bot Token',
-        description: 'Go to "OAuth & Permissions" → Copy "Bot User OAuth Token" (starts with xoxb-)',
-      },
-      {
-        title: 'Paste Token',
-        description: 'Paste the token below to connect',
+        title: 'Paste Below',
+        description: 'Paste your Bot Token in the field below',
       },
     ],
   },
@@ -333,6 +331,65 @@ export function ConnectToolModal({ tool, isOpen, onClose, onConnected }: Connect
                     <Button onClick={() => setStep(s => s + 1)} className="flex-1">
                       {config.steps[step].link ? "I've done this" : 'Next'}
                     </Button>
+                  </div>
+                </div>
+              ) : config.useOAuth ? (
+                // OAuth flow
+                <div>
+                  <div className="flex items-start gap-3 mb-6">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                      <ExternalLink className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium mb-1">Connect with {tool.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Click the button below to securely connect your {tool.name} account. You&apos;ll be redirected to {tool.name} to authorize access.
+                      </p>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-500 text-sm mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      {error}
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={() => {
+                      if (config.oauthEndpoint) {
+                        window.location.href = config.oauthEndpoint
+                      }
+                    }}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Connect with {tool.name}
+                  </Button>
+
+                  {/* Trust & Privacy Notice */}
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mt-4">
+                    <div className="flex items-start gap-3">
+                      <Shield className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-green-500">Your Data Privacy Promise</p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-green-500" /> Secure OAuth 2.0 authentication
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-green-500" /> Read-only access — we can&apos;t modify anything
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-green-500" /> <strong>Never used for AI training</strong>
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-green-500" /> Revoke access anytime from {tool.name} settings
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (

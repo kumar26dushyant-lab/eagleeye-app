@@ -12,9 +12,9 @@ export async function GET() {
 
   const { data: integrations, error } = await supabase
     .from('integrations')
-    .select('provider, team_name, status, connected_at, last_sync_at')
+    .select('provider, workspace_name, is_active, created_at, last_sync_at')
     .eq('user_id', user.id)
-    .eq('status', 'active')
+    .eq('is_active', true)
 
   if (error) {
     console.error('Failed to fetch integrations:', error)
