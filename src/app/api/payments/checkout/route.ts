@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import DodoPayments from 'dodopayments'
 
 // Product IDs mapped to tiers
@@ -32,7 +31,10 @@ function getDodoClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { tier, email, reactivation } = await request.json()
+    const body = await request.json()
+    const { tier, email, reactivation } = body
+
+    console.log('Checkout request:', { tier, email: email ? 'provided' : 'missing', reactivation })
 
     // Enterprise needs contact - no checkout
     if (tier === 'enterprise') {
@@ -72,51 +74,36 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Get user email
-    let customerEmail = email || null
-    
-    try {
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user?.email) {
-        customerEmail = user.email
-      }
-    } catch (authError) {
-      // Auth might fail for new signups - that's ok, we use the provided email
-      console.log('Auth check skipped (new user):', authError)
-    }
+    // Use the email provided in the request body (from signup form)
+    // No Supabase auth check needed - this is for new signups
+    const customerEmail = email
 
-    // Ensure we have a valid email
-    if (!customerEmail || typeof customerEmail !== 'string') {
+    // Validate email
+    if (!customerEmail || typeof customerEmail !== 'string' || !customerEmail.includes('@')) {
       return NextResponse.json(
-        { error: 'Email address is required for checkout' },
+        { error: 'Valid email address is required for checkout' },
         { status: 400 }
       )
     }
 
     // Create checkout session with Dodo
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'
-    // For reactivation, redirect to dashboard. For new signup, go to success page
     const returnUrl = reactivation 
       ? `${baseUrl}/dashboard?reactivated=true`
       : `${baseUrl}/checkout/success?tier=${tier}`
     
-    // Safely get customer name from email
-    const customerName = customerEmail.includes('@') 
-      ? customerEmail.split('@')[0] 
-      : customerEmail
+    // Get customer name from email
+    const customerName = customerEmail.split('@')[0]
+
+    console.log('Creating Dodo checkout session:', { productId, customerEmail, returnUrl })
 
     const client = getDodoClient()
     const session = await client.checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity: 1 }],
       customer: { email: customerEmail, name: customerName },
       return_url: returnUrl,
-      // Note: Dodo handles trial at product level, not session level
-      // For reactivation, product should be configured without trial in Dodo dashboard
     })
 
-    // Debug: Log the full session response to understand structure
     console.log('Dodo session response:', JSON.stringify(session, null, 2))
 
     // Handle various response formats from Dodo
@@ -133,7 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       checkoutUrl: checkoutUrl,
-      sessionId: (session as any).checkout_session_id || (session as any).id || checkoutUrl,
+      sessionId: (session as any).checkout_session_id || (session as any).id || 'session',
     })
   } catch (error: any) {
     console.error('Checkout error:', error)
