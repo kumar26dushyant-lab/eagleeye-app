@@ -202,52 +202,121 @@ function CleanSignals({ intensity = 1 }: { intensity: number }) {
   )
 }
 
-// Interactive Chaos to Signal Slider
+// Interactive Chaos to Signal Slider with Auto-Animation
 function ChaosSignalSlider() {
   const [sliderValue, setSliderValue] = useState(100)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const chaosIntensity = sliderValue / 100
   const signalIntensity = 1 - chaosIntensity
   
+  // Auto-animate the slider like a GIF demo
+  useEffect(() => {
+    if (!isAutoPlaying) return
+    
+    const animationInterval = setInterval(() => {
+      setSliderValue(prev => {
+        // Animate from chaos (100) to calm (0), then back
+        if (prev <= 0) {
+          // Pause at calm state
+          setTimeout(() => setSliderValue(100), 2000)
+          return 0
+        }
+        return prev - 2 // Smooth decrement
+      })
+    }, 80)
+    
+    return () => clearInterval(animationInterval)
+  }, [isAutoPlaying])
+  
+  // Stop auto-play when user interacts
+  const handleManualChange = (value: number) => {
+    setIsAutoPlaying(false)
+    setSliderValue(value)
+  }
+  
   return (
     <div className="space-y-6">
-      {/* Slider */}
+      {/* Slider with visual track */}
       <div className="relative">
+        {/* Slider track background with gradient glow */}
+        <div className="absolute inset-0 h-4 rounded-full bg-gradient-to-r from-cyan-500/20 via-yellow-500/20 to-red-500/20 blur-md" />
+        
         <input
           type="range"
           min="0"
           max="100"
           value={sliderValue}
-          onChange={(e) => setSliderValue(Number(e.target.value))}
-          className="w-full h-3 rounded-full appearance-none cursor-pointer"
+          onChange={(e) => handleManualChange(Number(e.target.value))}
+          className="w-full h-4 rounded-full appearance-none cursor-pointer relative z-10"
           style={{
-            background: `linear-gradient(to right, #22D3EE 0%, #22D3EE ${100 - sliderValue}%, #ef4444 ${100 - sliderValue}%, #ef4444 100%)`
+            background: `linear-gradient(to right, #22D3EE 0%, #22D3EE ${100 - sliderValue}%, #fbbf24 ${50}%, #ef4444 ${100 - sliderValue}%, #ef4444 100%)`
           }}
         />
-        <div className="flex justify-between mt-2 text-xs">
-          <span className="text-cyan-400 font-medium">← EagleEye View</span>
-          <span className="text-red-400 font-medium">Chaos →</span>
+        
+        {/* Animated thumb indicator */}
+        <motion.div 
+          className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-lg border-2 pointer-events-none z-20"
+          style={{ 
+            left: `calc(${100 - sliderValue}% - 12px)`,
+            borderColor: sliderValue > 50 ? '#ef4444' : '#22D3EE'
+          }}
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 0.5, repeat: Infinity }}
+        />
+        
+        <div className="flex justify-between mt-4 text-sm font-medium">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-cyan-400">EagleEye View</span>
+          </div>
+          <div className="text-center text-white/50 text-xs">
+            {isAutoPlaying ? (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Auto demo
+              </span>
+            ) : (
+              <button 
+                onClick={() => { setIsAutoPlaying(true); setSliderValue(100) }}
+                className="text-cyan-400 hover:underline"
+              >
+                ↻ Replay demo
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-red-400">Chaos</span>
+            <div className="w-3 h-3 rounded-full bg-red-400 animate-pulse" />
+          </div>
         </div>
       </div>
       
       {/* Two views side by side on larger screens, stacked on mobile */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="relative">
-          <div className="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-xs text-cyan-400 z-10">
+          <motion.div 
+            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-xs text-cyan-400 z-10 flex items-center gap-2"
+            animate={{ opacity: signalIntensity > 0.5 ? 1 : 0.5 }}
+          >
+            <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ opacity: signalIntensity }} />
             EagleEye
-          </div>
+          </motion.div>
           <CleanSignals intensity={signalIntensity + 0.3} />
         </div>
         <div className="relative">
-          <div className="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/50 text-xs text-red-400 z-10">
+          <motion.div 
+            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-xs text-red-400 z-10 flex items-center gap-2"
+            animate={{ opacity: chaosIntensity > 0.5 ? 1 : 0.5 }}
+          >
+            <span className="w-2 h-2 rounded-full bg-red-400" style={{ opacity: chaosIntensity }} />
             Without EagleEye
-          </div>
+          </motion.div>
           <ChaosWall intensity={chaosIntensity} />
         </div>
       </div>
     </div>
   )
 }
-
 // Primary CTA button - matches brand cyan
 function PrimaryButton({ children, href, size = 'default' }: { children: React.ReactNode; href: string; size?: 'default' | 'large' }) {
   const sizeClasses = size === 'large' 
@@ -385,8 +454,8 @@ export default function Home() {
         {/* ============================================ */}
         {/* HERO: "Own the Signal. Master the Chaos." */}
         {/* ============================================ */}
-        <section className="pt-32 pb-20 px-6 lg:px-12 relative">
-          <div className="max-w-[1200px] mx-auto text-center">
+        <section className="pt-32 pb-20 px-6 lg:px-16 relative">
+          <div className="max-w-[1400px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -576,8 +645,8 @@ export default function Home() {
         {/* ============================================ */}
         {/* FORT KNOX SECTION: Security & Trust */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-12">
-          <div className="max-w-[900px] mx-auto">
+        <section className="py-24 px-6 lg:px-16">
+          <div className="max-w-[1100px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -624,8 +693,8 @@ export default function Home() {
         {/* ============================================ */}
         {/* FOMO PRICING SECTION */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-12 bg-white/[0.02]">
-          <div className="max-w-[900px] mx-auto">
+        <section className="py-24 px-6 lg:px-16 bg-white/[0.02]">
+          <div className="max-w-[1000px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -640,7 +709,7 @@ export default function Home() {
               </p>
             </motion.div>
             
-            <div className="grid md:grid-cols-2 gap-6 max-w-[700px] mx-auto">
+            <div className="grid md:grid-cols-2 gap-8 max-w-[900px] mx-auto">
               {/* Solo Plan */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -738,7 +807,7 @@ export default function Home() {
         {/* INTEGRATIONS */}
         {/* ============================================ */}
         <section className="py-16 px-6 lg:px-12">
-          <div className="max-w-[1000px] mx-auto text-center">
+          <div className="max-w-[1200px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -778,7 +847,7 @@ export default function Home() {
         {/* THE COST OF CONTEXT SWITCHING */}
         {/* ============================================ */}
         <section className="py-20 px-6 lg:px-12">
-          <div className="max-w-[800px] mx-auto">
+          <div className="max-w-[1100px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -844,7 +913,7 @@ export default function Home() {
         {/* FAQ / OBJECTION BUSTERS */}
         {/* ============================================ */}
         <section className="py-20 px-6 lg:px-12 bg-white/[0.02]">
-          <div className="max-w-[700px] mx-auto">
+          <div className="max-w-[900px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -904,7 +973,7 @@ export default function Home() {
         {/* FINAL CTA */}
         {/* ============================================ */}
         <section className="py-24 px-6 lg:px-12">
-          <div className="max-w-[700px] mx-auto text-center">
+          <div className="max-w-[900px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}

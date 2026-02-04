@@ -85,6 +85,14 @@ function SignupContent() {
         }),
       })
 
+      if (!checkoutRes.ok) {
+        const errorText = await checkoutRes.text()
+        console.error('Checkout API error:', checkoutRes.status, errorText)
+        toast.error(`Payment setup failed (${checkoutRes.status}). Please try again.`)
+        setStep('form')
+        return
+      }
+
       const checkoutData = await checkoutRes.json()
 
       if (checkoutData.checkoutUrl) {
@@ -101,9 +109,9 @@ function SignupContent() {
         toast.error('Payment setup unavailable. Please contact support.')
         setStep('form')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Signup error:', err)
-      toast.error('Something went wrong. Please try again.')
+      toast.error(err?.message || 'Something went wrong. Please try again.')
       setStep('form')
     } finally {
       setLoading(false)

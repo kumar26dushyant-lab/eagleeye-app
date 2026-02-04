@@ -97,10 +97,24 @@ export async function POST(request: NextRequest) {
       // For reactivation, product should be configured without trial in Dodo dashboard
     })
 
+    // Debug: Log the full session response to understand structure
+    console.log('Dodo session response:', JSON.stringify(session, null, 2))
+
+    // Handle various response formats from Dodo
+    const checkoutUrl = session.checkout_url || (session as any).url || (session as any).checkoutUrl
+    
+    if (!checkoutUrl) {
+      console.error('No checkout URL in Dodo response:', session)
+      return NextResponse.json(
+        { error: 'Payment provider did not return a checkout URL. Please try again.' },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
-      checkoutUrl: session.checkout_url,
-      sessionId: (session as any).checkout_session_id || session.checkout_url,
+      checkoutUrl: checkoutUrl,
+      sessionId: (session as any).checkout_session_id || (session as any).id || checkoutUrl,
     })
   } catch (error: any) {
     console.error('Checkout error:', error)
