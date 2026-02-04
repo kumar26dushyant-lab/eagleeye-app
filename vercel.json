@@ -4,6 +4,18 @@
     {
       "path": "/api/trial/cron",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/digest/cron",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/sync/cron",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/accounts/cleanup",
+      "schedule": "0 10 * * *"
     }
   ]
 }

@@ -2,20 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Loader2, Save } from 'lucide-react'
+import { Loader2, Save, Volume2, Mail, Bell, Clock, Sliders, Shield, Trash2, Download, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
-import { ModeSelector } from '@/components/dashboard/ModeSelector'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import type { UserSettings, IntentMode } from '@/types'
+import type { UserSettings } from '@/types'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   useEffect(() => {
     fetchSettings()
@@ -59,6 +62,62 @@ export default function SettingsPage() {
     setSettings((prev: UserSettings | null) => prev ? { ...prev, [key]: value } : null)
   }
 
+  // Export user data
+  const handleExportData = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/user/data', {
+        method: 'GET',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `eagleeye-data-export-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.success('Data exported successfully')
+      } else {
+        toast.error('Failed to export data')
+      }
+    } catch {
+      toast.error('Failed to export data')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Delete account
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      toast.error('Please type DELETE to confirm')
+      return
+    }
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/user/data', {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('Account deleted. Redirecting...')
+        const supabase = createClient()
+        await supabase.auth.signOut()
+        window.location.href = '/'
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to delete account')
+      }
+    } catch {
+      toast.error('Failed to delete account')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto flex items-center justify-center py-20">
@@ -96,64 +155,50 @@ export default function SettingsPage() {
         transition={{ delay: 0.1 }}
         className="space-y-4"
       >
-        {/* Intent Mode */}
+        {/* Daily Brief Settings */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Intent Mode</CardTitle>
-            <CardDescription>
-              Set your current mode to control how many items are surfaced.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ModeSelector
-              mode={(settings?.default_intent_mode as IntentMode) || 'calm'}
-              onModeChange={(mode) => updateSetting('default_intent_mode', mode)}
-            />
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
-                <p className="font-medium">🏖️ Calm <span className="text-xs text-muted-foreground ml-2">Vacation mode</span></p>
-                <p className="text-muted-foreground text-xs mt-1">Only blockers, escalations & critical decisions. Perfect for time off.</p>
-              </div>
-              <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                <p className="font-medium">🚗 On-the-Go <span className="text-xs text-muted-foreground ml-2">Commute mode</span></p>
-                <p className="text-muted-foreground text-xs mt-1">Critical items + team wins & kudos. Quick catch-up while moving.</p>
-              </div>
-              <div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-                <p className="font-medium">💼 Work <span className="text-xs text-muted-foreground ml-2">Daily driver</span></p>
-                <p className="text-muted-foreground text-xs mt-1">All actionable signals: mentions, questions, blockers + positivity.</p>
-              </div>
-              <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
-                <p className="font-medium">🎯 Focus <span className="text-xs text-muted-foreground ml-2">Deep work</span></p>
-                <p className="text-muted-foreground text-xs mt-1">Only blockers & urgent items + your milestones for motivation.</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Daily Brief</CardTitle>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Brief Settings */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-base">Daily Brief</CardTitle>
             <CardDescription>
-              Configure your daily brief delivery.
+              Configure your daily brief delivery preferences.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Audio Brief</p>
-                <p className="text-sm text-muted-foreground">Generate audio version of brief</p>
+            {/* Audio Brief - Coming Soon */}
+            <div className="flex items-center justify-between opacity-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium flex items-center gap-2">
+                    Audio Brief
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 font-medium">
+                      COMING SOON
+                    </span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">Listen to your brief on the go</p>
+                </div>
               </div>
               <Switch
-                checked={settings?.audio_enabled ?? true}
-                onCheckedChange={(checked) => updateSetting('audio_enabled', checked)}
+                checked={false}
+                disabled={true}
               />
             </div>
 
+            {/* Email Digest */}
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Email Digest</p>
-                <p className="text-sm text-muted-foreground">Receive daily email summary</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium">Email Digest</p>
+                  <p className="text-sm text-muted-foreground">Receive daily email summary</p>
+                </div>
               </div>
               <Switch
                 checked={settings?.email_digest ?? false}
@@ -161,10 +206,16 @@ export default function SettingsPage() {
               />
             </div>
 
+            {/* Push Notifications */}
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Push Notifications</p>
-                <p className="text-sm text-muted-foreground">Enable push notifications</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium">Push Notifications</p>
+                  <p className="text-sm text-muted-foreground">Get notified about urgent items</p>
+                </div>
               </div>
               <Switch
                 checked={settings?.push_enabled ?? false}
@@ -174,10 +225,13 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Max Items */}
+        {/* Brief Customization */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Brief Limits</CardTitle>
+            <div className="flex items-center gap-2">
+              <Sliders className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Brief Customization</CardTitle>
+            </div>
             <CardDescription>
               Control how many items appear in your daily brief.
             </CardDescription>
@@ -195,7 +249,168 @@ export default function SettingsPage() {
                 max={20}
                 step={1}
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Adjust how many items you want to see in each category
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Timezone */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Timezone</CardTitle>
+            <CardDescription>
+              Your timezone is automatically detected. All times are shown in your local time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-medium">
+              {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Privacy & Data Section */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-green-500" />
+              <CardTitle className="text-base">Privacy & Data</CardTitle>
+            </div>
+            <CardDescription>
+              Control your data and privacy settings. Your data belongs to you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Data Retention Info */}
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                🗑️ Automatic Data Retention
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Processed signals are automatically deleted after <span className="font-semibold text-foreground">30 days</span>. 
+                Raw message data is never stored - we only keep the extracted signals.
+              </p>
+            </div>
+
+            {/* Export Data */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium">Export Your Data</p>
+                  <p className="text-sm text-muted-foreground">Download all your data as JSON</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExportData}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="bg-card border-red-500/30">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <CardTitle className="text-base text-red-500">Danger Zone</CardTitle>
+            </div>
+            <CardDescription>
+              Irreversible actions. Please be certain.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!showDeleteConfirm ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Delete Account</p>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete your account and all data
+                  </p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Account
+                </Button>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="p-4 rounded-lg bg-red-500/10 border border-red-500/30"
+              >
+                <div className="flex items-start gap-3 mb-4">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-500">Are you absolutely sure?</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      This will permanently delete:
+                    </p>
+                    <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+                      <li>Your account and profile</li>
+                      <li>All integrations and connections</li>
+                      <li>All signals and briefs</li>
+                      <li>Your subscription (no refunds)</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="text-sm text-muted-foreground block mb-2">
+                    Type <span className="font-mono font-semibold text-red-500">DELETE</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-red-500 focus:outline-none text-sm"
+                    placeholder="Type DELETE"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowDeleteConfirm(false)
+                      setDeleteConfirmText('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleDeleteAccount}
+                    disabled={deleting || deleteConfirmText !== 'DELETE'}
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete Forever
+                  </Button>
+                </div>
+              </motion.div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

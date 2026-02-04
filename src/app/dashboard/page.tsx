@@ -1,23 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import useSWR from 'swr'
-import { ModeSelector } from '@/components/dashboard/ModeSelector'
 import { AudioPlayer } from '@/components/dashboard/AudioPlayer'
-import { BriefCard } from '@/components/dashboard/BriefCard'
 import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
-import { FYISection } from '@/components/dashboard/FYISection'
-import { HandledSection } from '@/components/dashboard/HandledSection'
 import { SignalsSection } from '@/components/dashboard/SignalsSection'
 import { RefreshButton } from '@/components/dashboard/RefreshButton'
+import { BriefCard } from '@/components/dashboard/BriefCard'
+import { HandledSection } from '@/components/dashboard/HandledSection'
+import { SignalFilter, type FilterType } from '@/components/dashboard/SignalFilter'
 import { TrialBanner, useTrialStatus } from '@/components/trial-banner'
-import { MODE_CONFIG, type IntentMode } from '@/lib/importance'
+import { OnboardingModal, useOnboarding } from '@/components/onboarding/OnboardingModal'
 import { Logo } from '@/components/brand/Logo'
-import type { WorkItem, UserSettings, CommunicationSignal } from '@/types'
+import type { WorkItem, CommunicationSignal } from '@/types'
 import { toast } from 'sonner'
-import { Settings, Plus, Sparkles, TrendingUp, Shield, Zap, Clock, Activity } from 'lucide-react'
+import { Settings, Plus, Sparkles, Clock, Activity, Shield, Zap, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const fetcher = async (url: string) => {
@@ -26,28 +24,30 @@ const fetcher = async (url: string) => {
   return res.json()
 }
 
-// Mode-aware data response type
-interface ModeDataResponse {
-  mode: IntentMode
+// Data response type (simplified - no modes)
+interface DataResponse {
   dataSource?: string
   connectedTools?: string[]
-  coverage?: {
-    level: 'high' | 'medium' | 'low'
-    percentage: number
-    message: string
-  }
+  workspaceType?: 'smb' | 'enterprise' | 'tech' | 'hybrid' // NEW: auto-detected
   brief: {
     brief_text: string
-    needs_attention: WorkItem[]
-    fyi_items: WorkItem[]
+    needs_attention: CommunicationSignal[]
+    kudos_wins?: CommunicationSignal[]
+    fyi_items: CommunicationSignal[]
     handled_items: WorkItem[]
     coverage_percentage: number
     total_items_processed: number
     items_surfaced: number
   }
   signals: CommunicationSignal[]
+  categories?: {
+    needs_attention: CommunicationSignal[]
+    kudos_wins: CommunicationSignal[]
+    fyi: CommunicationSignal[]
+  }
   stats: {
     needsAttention: number
+    kudosWins?: number
     fyi: number
     handled: number
     signals: number
@@ -66,9 +66,58 @@ interface ModeDataResponse {
     message: string
     suggestion: string
   }
+  debug?: {
+    deduplication?: {
+      before: number
+      after: number
+      removed: number
+    }
+  }
 }
 
 type TimePreset = 'today' | 'yesterday' | '3days' | 'week'
+
+// Contextual labels based on workspace type
+function getSectionLabels(workspaceType: DataResponse['workspaceType']) {
+  switch (workspaceType) {
+    case 'smb':
+      return {
+        needsAttention: '🚨 Customer Issues',
+        needsAttentionDesc: 'Complaints, urgent requests, support needs',
+        kudos: '🌟 Happy Customers',
+        kudosDesc: 'Positive feedback and appreciation',
+        fyi: '📦 Orders & Inquiries',
+        fyiDesc: 'New orders, quotes, general questions',
+      }
+    case 'tech':
+      return {
+        needsAttention: '🔥 Blockers & Urgents',
+        needsAttentionDesc: 'PRs, blockers, escalations needing you',
+        kudos: '🎉 Team Wins',
+        kudosDesc: 'Shipped features, kudos, celebrations',
+        fyi: '📋 For Your Info',
+        fyiDesc: 'Updates, FYIs, context to stay in the loop',
+      }
+    case 'enterprise':
+      return {
+        needsAttention: '⚡ Needs Your Response',
+        needsAttentionDesc: '@mentions, escalations, direct asks',
+        kudos: '✨ Kudos & Wins',
+        kudosDesc: 'Recognition, celebrations, good news',
+        fyi: '📬 FYI',
+        fyiDesc: 'Updates you should know about',
+      }
+    default: // hybrid
+      return {
+        needsAttention: '🔴 Needs Attention',
+        needsAttentionDesc: 'Urgent items requiring your action',
+        kudos: '🏆 Kudos & Wins',
+        kudosDesc: 'Celebrations, appreciation, good vibes',
+        fyi: '📩 For Your Info',
+        fyiDesc: 'Updates and context',
+      }
+  }
+}
 
 // Get greeting based on time of day
 function getGreeting(): string {
@@ -78,31 +127,40 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-// Get motivational message based on stats
-function getMotivationalMessage(stats: ModeDataResponse['stats'] | undefined): string {
+// Get status message based on signals
+function getStatusMessage(stats: DataResponse['stats'] | undefined): string {
   if (!stats) return 'Loading your workspace...'
   
   if (stats.needsAttention === 0 && stats.signals === 0) {
-    return "All clear! You're in the zone 🎯"
+    return "All clear! Inbox zero achieved 🎯"
+  }
+  if (stats.needsAttention === 0 && stats.kudosWins && stats.kudosWins > 0) {
+    return `No fires! ${stats.kudosWins} kudos to celebrate ✨`
   }
   if (stats.needsAttention === 0) {
-    return "No fires to fight. Focus on what matters 💪"
+    return "No urgent items. Focus on what matters 💪"
   }
-  if (stats.needsAttention <= 2) {
-    return "Just a few items need your attention"
+  if (stats.needsAttention === 1) {
+    return "1 item needs your attention"
   }
-  return "Let's tackle these together"
+  if (stats.needsAttention <= 3) {
+    return `${stats.needsAttention} items need attention`
+  }
+  return `${stats.needsAttention} urgent items - let's tackle them`
 }
 
 export default function DashboardPage() {
-  const [mode, setMode] = useState<IntentMode>('work')
   const [timePreset, setTimePreset] = useState<TimePreset>('today')
   const [userTimezone, setUserTimezone] = useState<string>('UTC')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
-  const [modeData, setModeData] = useState<ModeDataResponse | null>(null)
-  const [isModeLoading, setIsModeLoading] = useState(true)
+  const [data, setData] = useState<DataResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all')
+
+  // Onboarding state
+  const { showOnboarding, setShowOnboarding, userName } = useOnboarding()
 
   // Update time every minute
   useEffect(() => {
@@ -120,75 +178,65 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Fetch settings to get default mode
-  const { data: settingsData } = useSWR<{ settings: UserSettings | null }>(
-    '/api/settings',
-    fetcher
-  )
-
-  // Fetch mode-specific data from REAL integrations (no cache)
-  const fetchModeData = useCallback(async (selectedMode: IntentMode, time: TimePreset = 'today', tz: string = userTimezone) => {
-    setIsModeLoading(true)
+  // Fetch data from integrations (no modes)
+  const fetchData = useCallback(async (time: TimePreset = 'today', tz: string = userTimezone) => {
+    setIsLoading(true)
     try {
-      // Add cache-busting timestamp to ensure fresh data from Slack
       const cacheBuster = Date.now()
-      const res = await fetch(`/api/data?mode=${selectedMode}&time=${time}&tz=${encodeURIComponent(tz)}&_t=${cacheBuster}`, {
+      const res = await fetch(`/api/data?time=${time}&tz=${encodeURIComponent(tz)}&_t=${cacheBuster}`, {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        }
+        headers: { 'Cache-Control': 'no-cache' }
       })
       if (res.ok) {
-        const data = await res.json()
-        setModeData(data)
-        return data
+        const responseData = await res.json()
+        setData(responseData)
+        return responseData
       }
     } catch (error) {
-      console.error('Failed to fetch mode data:', error)
+      console.error('Failed to fetch data:', error)
       throw error
     } finally {
-      setIsModeLoading(false)
+      setIsLoading(false)
     }
   }, [userTimezone])
 
-  // Set mode from settings on initial load
+  // Initial data fetch
   useEffect(() => {
-    if (settingsData?.settings?.default_intent_mode) {
-      const savedMode = settingsData.settings.default_intent_mode as IntentMode
-      setMode(savedMode)
-      fetchModeData(savedMode, timePreset)
-    } else {
-      fetchModeData(mode, timePreset)
-    }
-  }, [settingsData, fetchModeData])
+    fetchData(timePreset)
+  }, [fetchData, timePreset])
 
-  // Extract data from mode response
-  const brief = modeData?.brief
-  const signals = modeData?.signals || []
-  const stats = modeData?.stats
+  // Extract data from response
+  const brief = data?.brief
+  const signals = data?.signals || []
+  const stats = data?.stats
+  const categories = data?.categories
+  const workspaceType = data?.workspaceType || 'hybrid'
 
-  // Get items from brief
-  const needsAttention = brief?.needs_attention || []
-  const fyiItems = brief?.fyi_items || []
+  // Get contextual labels based on workspace type
+  const sectionLabels = getSectionLabels(workspaceType)
+
+  // Get items from categories
+  const needsAttention = categories?.needs_attention || brief?.needs_attention || []
+  const kudosWins = categories?.kudos_wins || brief?.kudos_wins || []
+  const fyiSignals = categories?.fyi || brief?.fyi_items || []
   const handledItems = brief?.handled_items || []
 
-  const handleModeChange = async (newMode: IntentMode) => {
-    setMode(newMode)
-    await fetchModeData(newMode, timePreset)
-    
-    fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent_mode: newMode }),
-    }).catch(() => {})
-    
-    const modeConfig = MODE_CONFIG[newMode]
-    toast.success(`${modeConfig.icon} Switched to ${modeConfig.label} mode`)
-  }
+  // Filter counts for the filter component
+  const filterCounts = useMemo(() => ({
+    all: needsAttention.length + kudosWins.length + fyiSignals.length,
+    urgent: needsAttention.length,
+    kudos: kudosWins.length,
+    fyi: fyiSignals.length,
+  }), [needsAttention.length, kudosWins.length, fyiSignals.length])
+
+  // Determine what to show based on active filter
+  const showNeedsAttention = activeFilter === 'all' || activeFilter === 'urgent'
+  const showKudos = activeFilter === 'all' || activeFilter === 'kudos'
+  const showFyi = activeFilter === 'all' || activeFilter === 'fyi'
 
   const handleTimeChange = async (newTime: TimePreset) => {
     setTimePreset(newTime)
-    await fetchModeData(mode, newTime, userTimezone)
+    await fetchData(newTime, userTimezone)
     
     const labels: Record<TimePreset, string> = {
       today: 'Today',
@@ -202,12 +250,13 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      const data = await fetchModeData(mode, timePreset, userTimezone)
-      const signalCount = data?.signals?.length || 0
-      const totalProcessed = data?.brief?.total_items_processed || 0
-      toast.success(`✅ Synced ${totalProcessed} messages, ${signalCount} signals found`)
+      const responseData = await fetchData(timePreset, userTimezone)
+      const signalCount = responseData?.signals?.length || 0
+      const totalProcessed = responseData?.brief?.total_items_processed || 0
+      const removed = responseData?.debug?.deduplication?.removed || 0
+      toast.success(`✅ Synced ${totalProcessed} messages, ${signalCount} signals (${removed} duplicates removed)`)
     } catch {
-      toast.error('Failed to refresh brief')
+      toast.error('Failed to refresh')
     } finally {
       setIsRefreshing(false)
     }
@@ -259,22 +308,19 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen relative">
+      {/* Onboarding Modal */}
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onComplete={() => setShowOnboarding(false)}
+        userName={userName}
+      />
+
       {/* Animated Background Gradient */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${
-          mode === 'calm' ? 'from-blue-950/20 via-background to-indigo-950/10' :
-          mode === 'focus' ? 'from-purple-950/20 via-background to-violet-950/10' :
-          mode === 'on_the_go' ? 'from-amber-950/20 via-background to-orange-950/10' :
-          'from-slate-950/20 via-background to-zinc-950/10'
-        }`} />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/20 via-background to-indigo-950/10" />
         {/* Subtle animated orbs */}
         <motion.div
-          className={`absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl opacity-20 ${
-            mode === 'calm' ? 'bg-blue-500' :
-            mode === 'focus' ? 'bg-purple-500' :
-            mode === 'on_the_go' ? 'bg-amber-500' :
-            'bg-indigo-500'
-          }`}
+          className="absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl opacity-20 bg-indigo-500"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.1, 0.2, 0.1],
@@ -342,8 +388,6 @@ export default function DashboardPage() {
                 </motion.button>
               ))}
             </div>
-
-            <ModeSelector mode={mode} onModeChange={handleModeChange} />
             
             <RefreshButton onClick={handleRefresh} isLoading={isRefreshing} />
 
@@ -363,33 +407,29 @@ export default function DashboardPage() {
           className="mb-8 p-4 rounded-2xl bg-card/50 backdrop-blur-md border border-border/50 shadow-xl"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            {/* Mode & Status */}
+            {/* Status */}
             <div className="flex items-center gap-4">
               <motion.div
-                className={`p-3 rounded-xl bg-gradient-to-br ${
-                  mode === 'calm' ? 'from-blue-500/20 to-indigo-500/20' :
-                  mode === 'focus' ? 'from-purple-500/20 to-violet-500/20' :
-                  mode === 'on_the_go' ? 'from-amber-500/20 to-orange-500/20' :
-                  'from-slate-500/20 to-zinc-500/20'
-                }`}
+                className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-indigo-500/20"
                 whileHover={{ scale: 1.05 }}
               >
-                <span className="text-2xl">{MODE_CONFIG[mode].icon}</span>
+                <span className="text-2xl">{stats?.needsAttention === 0 ? '✅' : stats?.needsAttention && stats.needsAttention > 3 ? '🔥' : '👀'}</span>
               </motion.div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold">{MODE_CONFIG[mode].label} Mode</h2>
-                  <span className="px-2 py-0.5 text-[10px] rounded-full bg-primary/10 text-primary font-medium">
-                    ACTIVE
+                  <h2 className="font-semibold">EagleEye</h2>
+                  <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-500 font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    SYNCED
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">{getMotivationalMessage(stats)}</p>
+                <p className="text-sm text-muted-foreground">{getStatusMessage(stats)}</p>
               </div>
             </div>
 
             {/* Connected Tools */}
             <div className="flex items-center gap-3 flex-wrap">
-              {modeData?.connectedTools?.includes('slack') && (
+              {data?.connectedTools?.includes('slack') && (
                 <motion.div 
                   whileHover={{ scale: 1.05 }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4A154B]/10 border border-[#4A154B]/20"
@@ -398,7 +438,7 @@ export default function DashboardPage() {
                   <span className="text-xs font-medium">Slack</span>
                 </motion.div>
               )}
-              {modeData?.connectedTools?.includes('asana') && (
+              {data?.connectedTools?.includes('asana') && (
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F06A6A]/10 border border-[#F06A6A]/20"
@@ -407,7 +447,7 @@ export default function DashboardPage() {
                   <span className="text-xs font-medium">Asana</span>
                 </motion.div>
               )}
-              {modeData?.connectedTools?.includes('linear') && (
+              {data?.connectedTools?.includes('linear') && (
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5E6AD2]/10 border border-[#5E6AD2]/20"
@@ -416,7 +456,16 @@ export default function DashboardPage() {
                   <span className="text-xs font-medium">Linear</span>
                 </motion.div>
               )}
-              {(!modeData?.connectedTools || modeData.connectedTools.length === 0) && (
+              {data?.connectedTools?.includes('whatsapp') && (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/10 border border-[#25D366]/20"
+                >
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-medium">WhatsApp</span>
+                </motion.div>
+              )}
+              {(!data?.connectedTools || data.connectedTools.length === 0) && (
                 <Link href="/dashboard/integrations" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors">
                   <Plus className="h-3 w-3 text-amber-500" />
                   <span className="text-xs font-medium text-amber-500">Connect tools</span>
@@ -478,10 +527,10 @@ export default function DashboardPage() {
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20"
+                    className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
                   >
-                    <div className="text-2xl font-bold text-blue-500">{stats?.signals || 0}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Signals</div>
+                    <div className="text-2xl font-bold text-emerald-500">{stats?.kudosWins || 0}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Kudos</div>
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.02 }}
@@ -492,10 +541,10 @@ export default function DashboardPage() {
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+                    className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20"
                   >
-                    <div className="text-2xl font-bold text-emerald-500">{stats?.handled || 0}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Handled</div>
+                    <div className="text-2xl font-bold text-blue-500">{stats?.signals || 0}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</div>
                   </motion.div>
                 </div>
               </motion.div>
@@ -528,8 +577,7 @@ export default function DashboardPage() {
                     totalItems: stats.totalItems,
                     coveragePercentage: brief?.coverage_percentage || 0
                   } : null} 
-                  mode={mode}
-                  isLoading={isModeLoading} 
+                  isLoading={isLoading} 
                 />
               </motion.div>
 
@@ -557,7 +605,7 @@ export default function DashboardPage() {
             
             {/* Empty State */}
             <AnimatePresence mode="wait">
-              {modeData?.emptyState && stats?.totalSignals === 0 && !isModeLoading && (
+              {data?.emptyState && stats?.totalSignals === 0 && !isLoading && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -571,9 +619,9 @@ export default function DashboardPage() {
                   >
                     ✨
                   </motion.div>
-                  <h3 className="text-xl font-semibold mb-2">{modeData.emptyState.message}</h3>
-                  <p className="text-muted-foreground mb-4">{modeData.emptyState.suggestion}</p>
-                  {modeData.timeWindow?.daysCovered && modeData.timeWindow.daysCovered < 1 && (
+                  <h3 className="text-xl font-semibold mb-2">{data.emptyState.message}</h3>
+                  <p className="text-muted-foreground mb-4">{data.emptyState.suggestion}</p>
+                  {data.timeWindow?.daysCovered && data.timeWindow.daysCovered < 1 && (
                     <Button variant="outline" onClick={() => handleTimeChange('yesterday')}>
                       View yesterday&apos;s updates
                     </Button>
@@ -583,7 +631,7 @@ export default function DashboardPage() {
             </AnimatePresence>
 
             {/* Slack Tip */}
-            {modeData?.connectedTools?.includes('slack') && stats?.totalSignals === 0 && !modeData?.emptyState && !isModeLoading && (
+            {data?.connectedTools?.includes('slack') && stats?.totalSignals === 0 && !data?.emptyState && !isLoading && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -599,36 +647,72 @@ export default function DashboardPage() {
 
             {/* Content Cards */}
             <div className="grid grid-cols-1 gap-6">
+              {/* Filter Bar */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.15 }}
+                className="flex items-center justify-between"
               >
-                <NeedsAttention items={needsAttention as WorkItem[]} isLoading={isModeLoading} />
+                <SignalFilter 
+                  activeFilter={activeFilter} 
+                  onFilterChange={setActiveFilter}
+                  counts={filterCounts}
+                />
               </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <SignalsSection signals={signals as CommunicationSignal[]} isLoading={isModeLoading} />
-              </motion.div>
+              {/* Needs Attention */}
+              {showNeedsAttention && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <NeedsAttention 
+                    items={needsAttention as CommunicationSignal[]} 
+                    isLoading={isLoading}
+                    title={sectionLabels.needsAttention}
+                    description={sectionLabels.needsAttentionDesc}
+                  />
+                </motion.div>
+              )}
+
+              {/* Kudos & Wins Section */}
+              {showKudos && kudosWins.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="font-semibold text-emerald-500">{sectionLabels.kudos}</h3>
+                      <span className="ml-auto text-xs text-muted-foreground">{kudosWins.length} items</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{sectionLabels.kudosDesc}</p>
+                    <SignalsSection signals={kudosWins as CommunicationSignal[]} isLoading={isLoading} showHeader={false} />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* FYI Section */}
+              {showFyi && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <SignalsSection signals={fyiSignals as CommunicationSignal[]} isLoading={isLoading} title={sectionLabels.fyi} description={sectionLabels.fyiDesc} />
+                </motion.div>
+              )}
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <FYISection items={fyiItems as WorkItem[]} isLoading={isModeLoading} />
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <HandledSection items={handledItems as WorkItem[]} isLoading={isModeLoading} />
+                  <HandledSection items={handledItems as WorkItem[]} isLoading={isLoading} />
                 </motion.div>
               </div>
             </div>
@@ -642,14 +726,14 @@ export default function DashboardPage() {
             >
               <div className="flex items-center gap-4">
                 <span>📊 {stats?.totalSignals || 0} signals processed</span>
-                {modeData?.dataSource && modeData.dataSource !== 'none' && (
+                {data?.dataSource && data.dataSource !== 'none' && (
                   <span className="flex items-center gap-1 text-green-500">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Live from {modeData.dataSource}
+                    Live from {data.dataSource}
                   </span>
                 )}
               </div>
-              <span>{modeData?.timeWindow?.timezoneDisplay || formatTz(userTimezone)}</span>
+              <span>{data?.timeWindow?.timezoneDisplay || formatTz(userTimezone)}</span>
             </motion.div>
           </div>
         </div>

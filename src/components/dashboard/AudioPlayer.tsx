@@ -81,19 +81,11 @@ export function AudioPlayer({ audioUrl, onRegenerate, isGenerating }: AudioPlaye
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border"
+        className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border/50"
       >
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Volume2 className="h-5 w-5" />
-          <span className="text-sm">Audio brief not generated</span>
-        </div>
-        <button
-          onClick={onRegenerate}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary hover:bg-muted rounded-lg transition-colors"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Generate
-        </button>
+        <Volume2 className="h-5 w-5 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Audio Briefings</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded">Coming Soon</span>
       </motion.div>
     )
   }

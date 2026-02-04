@@ -63,7 +63,7 @@ export async function sendEmailDigest(
 
   try {
     const response = await resendClient.emails.send({
-      from: 'EagleEye <brief@eagleeye.app>',
+      from: 'EagleEye <brief@eagleeye.work>',
       to: email,
       subject,
       html,

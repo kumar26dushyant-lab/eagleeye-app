@@ -34,23 +34,51 @@ function ResetPasswordContent() {
   const passwordStrength = Object.values(passwordChecks).filter(Boolean).length
 
   useEffect(() => {
-    // Supabase handles the token exchange automatically when using the redirect
-    // We just need to check if we have a session
-    const checkSession = async () => {
-      const supabase = createClient()
-      const { data: { session }, error } = await supabase.auth.getSession()
+    const supabase = createClient()
+    
+    // This is the BULLETPROOF approach used by all major apps:
+    // Supabase automatically detects the recovery tokens in the URL hash
+    // and emits a PASSWORD_RECOVERY event when the session is established
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Reset Password] Auth event:', event)
       
-      if (error) {
-        console.error('Session error:', error)
-        setError('Invalid or expired reset link. Please request a new one.')
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked the password reset link - session is now valid
+        console.log('[Reset Password] Password recovery session established')
+        setValidatingToken(false)
+        setError(null)
+      } else if (event === 'SIGNED_IN' && session) {
+        // Already signed in with a valid session
+        console.log('[Reset Password] User already signed in')
+        setValidatingToken(false)
+        setError(null)
       }
-      
-      setValidatingToken(false)
-    }
+    })
 
-    // Small delay to allow Supabase to process the token from URL
-    setTimeout(checkSession, 500)
-  }, [searchParams])
+    // Also check for existing session (in case page was refreshed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.log('[Reset Password] Existing session found')
+        setValidatingToken(false)
+        setError(null)
+      } else {
+        // Give Supabase a moment to process the URL hash tokens
+        // This happens automatically when the client initializes
+        setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session: retrySession } }) => {
+            if (!retrySession) {
+              console.log('[Reset Password] No session after retry')
+              setError('Invalid or expired reset link. Please request a new one.')
+            }
+            setValidatingToken(false)
+          })
+        }, 1500)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

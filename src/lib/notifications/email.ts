@@ -266,7 +266,7 @@ export async function sendDigestEmail(data: EmailDigestData): Promise<boolean> {
 
   try {
     const { error } = await resend.emails.send({
-      from: 'EagleEye <digest@eagleeye.app>',
+      from: 'EagleEye <digest@eagleeye.work>',
       to: data.recipientEmail,
       subject: `🦅 Your Brief: ${data.summary.critical} critical, ${data.summary.blockers} blockers`,
       html: generateDigestHTML(data),
@@ -306,7 +306,7 @@ export async function sendUrgentEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: 'EagleEye Alerts <alerts@eagleeye.app>',
+      from: 'EagleEye Alerts <alerts@eagleeye.work>',
       to,
       subject: `🚨 ${subject}`,
       html: `

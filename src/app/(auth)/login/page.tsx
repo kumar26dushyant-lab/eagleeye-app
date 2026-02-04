@@ -1,22 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Mail, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Logo } from '@/components/brand/Logo'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const message = searchParams.get('message')
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showEmailBanner, setShowEmailBanner] = useState(message === 'confirm-email')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +41,13 @@ export default function LoginPage() {
 
       if (error) {
         console.error('Login error:', error)
-        toast.error(error.message)
+        // Provide helpful message for unconfirmed emails
+        if (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed')) {
+          setShowEmailBanner(true) // Show the email confirmation banner
+          toast.error('📧 Please confirm your email first! Check your inbox (and spam folder)')
+        } else {
+          toast.error(error.message)
+        }
         setLoading(false)
         return
       }
@@ -54,6 +64,30 @@ export default function LoginPage() {
     }
   }
 
+  // Resend confirmation email
+  const resendConfirmation = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first')
+      return
+    }
+    
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      })
+      
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success('Confirmation email sent! Check your inbox.')
+      }
+    } catch (err) {
+      toast.error('Failed to resend email')
+    }
+  }
+
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
       <CardHeader className="text-center space-y-2">
@@ -66,6 +100,35 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Email confirmation banner - always show for new signups */}
+        {showEmailBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30"
+          >
+            <div className="flex items-start gap-3">
+              <Mail className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-400 mb-1">📧 Check your email first!</p>
+                <p className="text-muted-foreground mb-2">
+                  We sent a confirmation link to activate your account. You must click it before you can login.
+                </p>
+                <p className="text-muted-foreground text-xs mb-3">
+                  <strong>💡 Tip:</strong> Check your <span className="text-amber-400">Spam/Junk folder</span> if you don't see it in your inbox.
+                </p>
+                <button
+                  type="button"
+                  onClick={resendConfirmation}
+                  className="text-xs px-4 py-2 bg-amber-500/20 text-amber-400 rounded-full hover:bg-amber-500/30 transition-colors font-medium"
+                >
+                  Resend confirmation email
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
@@ -131,5 +194,29 @@ export default function LoginPage() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+      <CardHeader className="text-center space-y-2">
+        <div className="mx-auto mb-4">
+          <Logo size="lg" showText={true} animated={true} />
+        </div>
+        <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
+      </CardHeader>
+      <CardContent className="flex justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   )
 }

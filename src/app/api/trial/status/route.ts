@@ -28,6 +28,9 @@ export async function GET() {
       trialEndsAt: status.trialEndsAt?.toISOString(),
       hasPaymentMethod: status.hasPaymentMethod,
       cancelAtPeriodEnd: status.cancelAtPeriodEnd,
+      // Payment failure fields
+      paymentFailed: status.paymentFailed,
+      gracePeriodEndsAt: status.gracePeriodEndsAt?.toISOString(),
     })
   } catch (error) {
     console.error('Error fetching trial status:', error)

@@ -20,6 +20,7 @@ interface ToolConfig {
   status?: 'healthy' | 'degraded' | 'error'
   lastSync?: string
   scopes?: string[]
+  comingSoon?: boolean
 }
 
 interface CoverageInfo {
@@ -37,12 +38,13 @@ function IntegrationsContent() {
   
   const [showWelcome, setShowWelcome] = useState(isWelcome)
   const [tools, setTools] = useState<ToolConfig[]>([
+    { id: 'whatsapp', name: 'WhatsApp Business', icon: '📱', description: 'Customer chats, groups, orders • Solo only', connected: false },
     { id: 'slack', name: 'Slack', icon: '💬', description: 'Channels, @mentions, discussions', connected: false },
     { id: 'asana', name: 'Asana', icon: '📋', description: 'Tasks, projects, deadlines', connected: false },
     { id: 'linear', name: 'Linear', icon: '🎯', description: 'Issues, sprints, blockers', connected: false },
     { id: 'clickup', name: 'ClickUp', icon: '✅', description: 'Tasks, workspaces', connected: false },
-    { id: 'notion', name: 'Notion', icon: '📝', description: 'Databases, docs', connected: false },
-    { id: 'github', name: 'GitHub', icon: '🐙', description: 'PRs, issues, reviews', connected: false },
+    { id: 'notion', name: 'Notion', icon: '📝', description: 'Databases, docs', connected: false, comingSoon: true },
+    { id: 'github', name: 'GitHub', icon: '🐙', description: 'PRs, issues, reviews', connected: false, comingSoon: true },
     { id: 'jira', name: 'Jira', icon: '🔷', description: 'Tickets, sprints', connected: false },
     { id: 'teams', name: 'MS Teams', icon: '👥', description: 'Channels, chats', connected: false },
   ])
@@ -79,6 +81,14 @@ function IntegrationsContent() {
         if (tool.id === 'linear') {
           return { ...tool, connected: data.linear?.connected || false }
         }
+        if (tool.id === 'whatsapp' && data.whatsapp) {
+          return { 
+            ...tool, 
+            connected: data.whatsapp.connected,
+            workspace: data.whatsapp.phoneNumber || data.whatsapp.accountName,
+            status: data.whatsapp.connected ? 'healthy' : undefined,
+          }
+        }
         return tool
       }))
       
@@ -87,9 +97,10 @@ function IntegrationsContent() {
         data.slack?.connected,
         data.asana?.connected,
         data.linear?.connected,
+        data.whatsapp?.connected,
       ].filter(Boolean).length
       
-      const percentage = Math.round((connectedCount / 3) * 100)
+      const percentage = Math.round((connectedCount / 4) * 100)
       
       setCoverage({
         overall: percentage >= 66 ? 'high' : percentage >= 33 ? 'medium' : 'low',
@@ -207,7 +218,7 @@ function IntegrationsContent() {
                     Connect your tools below to start getting AI-powered insights.
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    ✓ 14-day free trial • ✓ Full access to all features • ✓ Cancel anytime
+                    ✓ 7-day free trial • ✓ Full access to all features • ✓ Cancel anytime
                   </p>
                 </div>
               </div>
@@ -271,6 +282,30 @@ function IntegrationsContent() {
                 <li className="flex items-center gap-2">
                   <Check className="h-3 w-3 text-green-500" />
                   <span><strong>Public channels only</strong> — No private DMs or confidential data</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Integration Notes */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="text-lg">💡</div>
+            <div>
+              <p className="text-sm font-semibold text-blue-400">How integrations work</p>
+              <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-400 shrink-0">•</span>
+                  <span><strong>Slack, Teams, Jira, Asana, Linear, ClickUp:</strong> Use OAuth authentication. Each team member connects with their own account.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 shrink-0">•</span>
+                  <span><strong>WhatsApp Business:</strong> Uses phone number + API credentials. <span className="text-amber-400">One business account per EagleEye user (Solo plan only).</span></span>
                 </li>
               </ul>
             </div>
@@ -386,18 +421,30 @@ function IntegrationsContent() {
             {unconnectedTools.map((tool) => (
               <button
                 key={tool.id}
-                className="flex items-center gap-3 border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer group text-left w-full"
-                onClick={() => setConnectingTool(tool)}
+                className={`flex items-center gap-3 border border-border rounded-lg p-4 transition-colors text-left w-full ${
+                  tool.comingSoon 
+                    ? 'opacity-60 cursor-not-allowed' 
+                    : 'hover:border-primary/50 hover:bg-primary/5 cursor-pointer group'
+                }`}
+                onClick={() => !tool.comingSoon && setConnectingTool(tool)}
+                disabled={tool.comingSoon}
               >
-                <span className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">{tool.icon}</span>
+                <span className={`text-2xl transition-opacity ${tool.comingSoon ? 'opacity-50' : 'opacity-50 group-hover:opacity-100'}`}>{tool.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">{tool.name}</h3>
+                  <h3 className={`font-medium transition-colors ${tool.comingSoon ? 'text-muted-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                    {tool.name}
+                    {tool.comingSoon && (
+                      <span className="ml-2 text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Soon</span>
+                    )}
+                  </h3>
                   <p className="text-xs text-muted-foreground truncate">{tool.description}</p>
                 </div>
-                <div className="flex items-center gap-1 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Plus className="h-4 w-4" />
-                  <span className="text-xs font-medium">Connect</span>
-                </div>
+                {!tool.comingSoon && (
+                  <div className="flex items-center gap-1 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs font-medium">Connect</span>
+                  </div>
+                )}
               </button>
             ))}
           </div>

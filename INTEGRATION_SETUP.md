@@ -2,7 +2,19 @@
 
 ## 🚀 Quick Start - Get Real Data Flowing in 10 Minutes
 
-This guide helps you connect EagleEye to your actual Slack workspace, Asana tasks, or Linear issues. All of these have **free tiers** that work perfectly for testing.
+This guide helps you connect EagleEye to your actual WhatsApp Business, Slack workspace, Asana tasks, or Linear issues. All of these have **free tiers** that work perfectly for testing.
+
+---
+
+### 0. WhatsApp Business Integration (SMB Communication)
+
+#### Why WhatsApp Business?
+- Monitor customer chats, orders, and complaints
+- Detect urgent messages requiring immediate response
+- Surface escalations from high-value customers
+
+#### Setup Guide
+See [docs/WHATSAPP_SETUP.md](docs/WHATSAPP_SETUP.md) for detailed WhatsApp Business Cloud API setup instructions.
 
 ---
 

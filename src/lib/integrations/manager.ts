@@ -13,7 +13,7 @@ import { SlackAdapter } from './adapters/slack'
 import { AsanaAdapter } from './adapters/asana'
 
 // Recommended tools by category
-const COMMUNICATION_TOOLS: IntegrationSource[] = ['slack', 'teams']
+const COMMUNICATION_TOOLS: IntegrationSource[] = ['slack', 'teams', 'whatsapp']
 const TASK_TOOLS: IntegrationSource[] = ['asana', 'linear', 'clickup', 'jira', 'notion']
 
 export class IntegrationManager {

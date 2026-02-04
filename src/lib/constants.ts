@@ -92,7 +92,7 @@ export const INTEGRATIONS = {
 export type IntegrationKey = keyof typeof INTEGRATIONS
 
 export const TASK_INTEGRATIONS = ['asana', 'clickup', 'jira'] as const
-export const COMMUNICATION_INTEGRATIONS = ['slack', 'teams'] as const
+export const COMMUNICATION_INTEGRATIONS = ['slack', 'teams', 'whatsapp'] as const
 
 // ============================================
 // SIGNAL TYPES

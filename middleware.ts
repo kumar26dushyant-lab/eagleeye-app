@@ -2,6 +2,18 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  
+  // CRITICAL: Skip middleware entirely for password reset flow
+  // These pages handle their own auth state via client-side Supabase
+  const isPasswordResetFlow = pathname.startsWith('/reset-password') || 
+                               pathname.startsWith('/forgot-password') ||
+                               pathname.startsWith('/auth/confirm')
+  
+  if (isPasswordResetFlow) {
+    return NextResponse.next({ request })
+  }
+  
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -33,10 +45,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
-                     request.nextUrl.pathname.startsWith('/signup')
-  const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard')
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
+  const isAuthPage = pathname.startsWith('/login') || 
+                     pathname.startsWith('/signup')
+  const isDashboardPage = pathname.startsWith('/dashboard')
+  const isApiRoute = pathname.startsWith('/api')
 
   // If user is not signed in and trying to access dashboard
   if (!user && isDashboardPage) {

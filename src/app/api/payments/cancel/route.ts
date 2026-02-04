@@ -1,13 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { cancelSubscription } from '@/lib/payments/stripe'
+import DodoPayments from 'dodopayments'
+
+function getDodoClient() {
+  const apiKey = process.env.DODO_PAYMENTS_API_KEY
+  if (!apiKey) {
+    throw new Error('DODO_PAYMENTS_API_KEY not configured')
+  }
+  
+  return new DodoPayments({
+    bearerToken: apiKey.trim(),
+    environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as 'test_mode' | 'live_mode') || 'test_mode',
+  })
+}
+
+/**
+ * Clean up user data after cancellation
+ */
+async function cleanupUserData(supabase: any, userId: string, userEmail: string) {
+  console.log('[Cancel] Cleaning up data for user:', userId)
+  
+  // Delete integrations
+  await supabase
+    .from('integrations')
+    .delete()
+    .eq('user_id', userId)
+  
+  // Delete communication signals
+  await supabase
+    .from('communication_signals')
+    .delete()
+    .eq('user_id', userId)
+  
+  // Delete subscription record
+  await supabase
+    .from('subscriptions')
+    .delete()
+    .eq('customer_email', userEmail.toLowerCase())
+  
+  console.log('[Cancel] User data cleaned up')
+}
 
 /**
  * POST /api/payments/cancel
- * Cancel subscription - either immediately or at period end
- * 
- * For trials: Cancels immediately, card won't be charged
- * For active subs: Cancels at period end by default
+ * Cancel subscription - disconnects integrations, deletes data, and logs out
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,73 +59,41 @@ export async function POST(request: NextRequest) {
 
     const { immediate = false } = await request.json().catch(() => ({}))
 
-    // Get user's subscription (cast to any to bypass type checking)
+    // Get user's subscription by email
     const { data: subscription } = await (supabase as any)
       .from('subscriptions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('customer_email', user.email?.toLowerCase())
       .single()
 
     if (!subscription) {
       return NextResponse.json(
-        { error: 'No subscription found' },
+        { error: 'No subscription found for this account' },
         { status: 404 }
       )
     }
 
-    // If in trial without Stripe subscription, just mark as cancelled
-    if (subscription.status === 'trialing' && !subscription.stripe_subscription_id) {
-      await (supabase as any)
-        .from('subscriptions')
-        .update({
+    // If has Dodo subscription, cancel it via API
+    if (subscription.dodo_subscription_id) {
+      try {
+        const client = getDodoClient()
+        await client.subscriptions.update(subscription.dodo_subscription_id, {
           status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id)
-
-      return NextResponse.json({
-        success: true,
-        message: 'Trial cancelled. You can sign up again anytime.',
-      })
+      } catch (err) {
+        console.error('Dodo cancel error:', err)
+        // Continue even if API fails
+      }
     }
 
-    // If has Stripe subscription, cancel it
-    if (subscription.stripe_subscription_id) {
-      const stripeSubscription = await cancelSubscription(subscription.stripe_subscription_id) as any
+    // Clean up all user data
+    await cleanupUserData(supabase, user.id, user.email || '')
 
-      await (supabase as any)
-        .from('subscriptions')
-        .update({
-          cancel_at_period_end: true,
-          cancelled_at: new Date().toISOString(),
-          current_period_end: stripeSubscription.current_period_end 
-            ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
-            : subscription.trial_ends_at,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id)
-
-      // Determine when access ends
-      const accessEndsAt = stripeSubscription.current_period_end
-        ? new Date(stripeSubscription.current_period_end * 1000)
-        : subscription.trial_ends_at 
-          ? new Date(subscription.trial_ends_at) 
-          : new Date()
-
-      return NextResponse.json({
-        success: true,
-        message: subscription.status === 'trialing' 
-          ? 'Trial cancelled. Your card will not be charged.'
-          : `Subscription cancelled. You'll have access until ${accessEndsAt.toLocaleDateString()}.`,
-        accessUntil: accessEndsAt.toISOString(),
-      })
-    }
-
-    return NextResponse.json(
-      { error: 'No active subscription to cancel' },
-      { status: 400 }
-    )
+    return NextResponse.json({
+      success: true,
+      shouldLogout: true,  // Signal to frontend to logout
+      message: 'Subscription cancelled. Your data has been removed. Redirecting...',
+    })
   } catch (error: any) {
     console.error('Cancel error:', error)
     return NextResponse.json(

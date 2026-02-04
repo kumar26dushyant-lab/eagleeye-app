@@ -1,11 +1,11 @@
 export type IntentMode = 'calm' | 'on_the_go' | 'work' | 'focus'
 
-export type IntegrationProvider = 'asana' | 'clickup' | 'jira' | 'linear' | 'slack' | 'teams'
+export type IntegrationProvider = 'asana' | 'clickup' | 'jira' | 'linear' | 'slack' | 'teams' | 'whatsapp'
 
 export type TaskProvider = 'asana' | 'clickup' | 'jira' | 'linear'
 
 // Sources that can generate communication signals (messages and tasks)
-export type CommunicationProvider = 'slack' | 'teams' | 'asana' | 'linear' | 'jira' | 'clickup'
+export type CommunicationProvider = 'slack' | 'teams' | 'whatsapp' | 'asana' | 'linear' | 'jira' | 'clickup'
 
 export type Urgency = 'high' | 'medium' | 'low'
 

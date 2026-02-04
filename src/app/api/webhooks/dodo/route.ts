@@ -1,0 +1,386 @@
+// Dodo Payments Webhook Handler
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { sendPaymentConfirmationEmail, sendSubscriptionCancelledEmail } from "@/lib/email";
+import { sendPaymentFailedEmail } from "@/lib/trial/emails";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Grace period duration in days
+const GRACE_PERIOD_DAYS = 3;
+
+// Manual webhook handler since the SDK requires key at import time
+export async function POST(request: NextRequest) {
+  const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
+  
+  if (!webhookKey) {
+    console.error("[Dodo Webhook] Missing webhook key");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+  }
+
+  try {
+    const rawBody = await request.text();
+    const payload = JSON.parse(rawBody);
+    
+    console.log("[Dodo Webhook] Received:", payload.type);
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const data = payload.data || {};
+    
+    switch (payload.type) {
+      case 'payment.succeeded':
+        await handlePaymentSucceeded(supabase, data);
+        break;
+      case 'payment.failed':
+        await handlePaymentFailed(supabase, data);
+        break;
+      case 'subscription.active':
+        await handleSubscriptionActive(supabase, data);
+        break;
+      case 'subscription.cancelled':
+        await handleSubscriptionCancelled(supabase, data);
+        break;
+      case 'subscription.renewed':
+        await handleSubscriptionRenewed(supabase, data);
+        break;
+      case 'refund.succeeded':
+        await handleRefundSucceeded(supabase, data);
+        break;
+      default:
+        console.log("[Dodo Webhook] Unhandled event type:", payload.type);
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error("[Dodo Webhook] Error:", error);
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+  }
+}
+
+async function handlePaymentSucceeded(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Payment succeeded:", data);
+  
+  const customerId = data.customer?.customer_id;
+  const customerEmail = data.customer?.email?.toLowerCase();
+  const subscriptionId = data.subscription_id;
+  const productId = data.product_id;
+  const paymentId = data.payment_id;
+  
+  if (!customerEmail) {
+    console.error("[Dodo Webhook] No customer email in payment data");
+    return;
+  }
+  
+  // Determine tier based on product
+  let tier = 'founder'; // Solo plan
+  if (productId?.toLowerCase().includes('team') || data.product_name?.toLowerCase().includes('team')) {
+    tier = 'team';
+  }
+  
+  // Check if subscription exists for this email (try multiple lookup methods)
+  let existingId: string | null = null;
+  
+  // First try by customer_email
+  const { data: byEmail } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('customer_email', customerEmail)
+    .single();
+  
+  if (byEmail) {
+    existingId = byEmail.id;
+  } else {
+    // Try to find by profile email (for older records without customer_email)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('email', customerEmail)
+      .single();
+    
+    if (profile) {
+      const { data: byUser } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', profile.id)
+        .single();
+      
+      if (byUser) {
+        existingId = byUser.id;
+      }
+    }
+  }
+  
+  if (existingId) {
+    // Update existing subscription - clear any payment failure flags
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        customer_email: customerEmail, // Ensure customer_email is set
+        dodo_customer_id: customerId,
+        dodo_subscription_id: subscriptionId,
+        dodo_payment_id: paymentId,
+        tier: tier,
+        status: 'active',
+        // Clear payment failure fields on successful payment
+        payment_failed_at: null,
+        grace_period_ends_at: null,
+        account_deletion_scheduled_at: null,
+        payment_retry_count: 0,
+        last_payment_error: null,
+        payment_failed_email_sent: false,
+        grace_period_email_sent: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingId);  // Use ID for reliable update
+    
+    // Mark any unresolved payment failures as resolved
+    await supabase
+      .from('payment_failure_logs')
+      .update({ 
+        resolved_at: new Date().toISOString(),
+        resolved_by: 'auto_payment_success'
+      })
+      .eq('customer_email', customerEmail)
+      .is('resolved_at', null);
+    
+    if (error) {
+      console.error("[Dodo Webhook] Failed to update subscription:", error);
+    } else {
+      console.log("[Dodo Webhook] Subscription updated for:", customerEmail, "Tier:", tier);
+      
+      // Send payment confirmation email for updates too (reactivation)
+      try {
+        await sendPaymentConfirmationEmail({
+          to: customerEmail,
+          planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
+          amount: tier === 'team' ? '$29' : '$9',
+          loginLink: 'https://eagleeye.work/login',
+        });
+        console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);
+      } catch (emailError) {
+        console.error("[Dodo Webhook] Failed to send email:", emailError);
+      }
+    }
+  } else {
+    // Create new subscription
+    const { error } = await supabase
+      .from('subscriptions')
+      .insert({
+        customer_email: customerEmail,
+        dodo_customer_id: customerId,
+        dodo_subscription_id: subscriptionId,
+        dodo_payment_id: paymentId,
+        product_id: productId,
+        tier: tier,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    
+    if (error) {
+      console.error("[Dodo Webhook] Failed to create subscription:", error);
+    } else {
+      console.log("[Dodo Webhook] Subscription created for:", customerEmail, "Tier:", tier);
+      
+      // Send payment confirmation email
+      try {
+        await sendPaymentConfirmationEmail({
+          to: customerEmail,
+          planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
+          amount: tier === 'team' ? '$29' : '$9',
+          loginLink: 'https://eagleeye.work/login',
+        });
+        console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);
+      } catch (emailError) {
+        console.error("[Dodo Webhook] Failed to send email:", emailError);
+      }
+    }
+  }
+}
+
+async function handleSubscriptionActive(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Subscription active:", data);
+  
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('dodo_customer_id', data.customer?.customer_id);
+  
+  if (error) {
+    console.error("[Dodo Webhook] Failed to update subscription:", error);
+  }
+}
+
+async function handleSubscriptionCancelled(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Subscription cancelled:", data);
+  
+  const customerEmail = data.customer?.email?.toLowerCase();
+  
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('dodo_customer_id', data.customer?.customer_id);
+  
+  if (error) {
+    console.error("[Dodo Webhook] Failed to cancel subscription:", error);
+  } else if (customerEmail) {
+    // Send cancellation confirmation email
+    await sendSubscriptionCancelledEmail({ to: customerEmail });
+    console.log("[Dodo Webhook] Cancellation email sent to:", customerEmail);
+  }
+}
+
+async function handleSubscriptionRenewed(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Subscription renewed:", data);
+  
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('dodo_customer_id', data.customer?.customer_id);
+  
+  if (error) {
+    console.error("[Dodo Webhook] Failed to renew subscription:", error);
+  }
+}
+
+async function handleRefundSucceeded(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Refund succeeded:", data);
+  
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'refunded',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('dodo_payment_id', data.payment_id);
+  
+  if (error) {
+    console.error("[Dodo Webhook] Failed to process refund:", error);
+  }
+}
+
+async function handlePaymentFailed(supabase: any, data: any) {
+  console.log("[Dodo Webhook] Payment failed:", data);
+  
+  const customerEmail = data.customer?.email?.toLowerCase();
+  const customerId = data.customer?.customer_id;
+  const paymentId = data.payment_id;
+  const failureReason = data.failure_reason || data.error_message || 'Payment declined';
+  
+  if (!customerEmail) {
+    console.error("[Dodo Webhook] No customer email in payment failed data");
+    return;
+  }
+  
+  const now = new Date();
+  const gracePeriodEndsAt = new Date(now.getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+  const accountDeletionAt = new Date(gracePeriodEndsAt.getTime() + 1 * 24 * 60 * 60 * 1000); // 1 day after grace period
+  
+  // Get existing subscription - try both customer_email and looking up via profile
+  let subscription = null;
+  
+  // First try by customer_email
+  const { data: subByEmail } = await supabase
+    .from('subscriptions')
+    .select('id, status, payment_retry_count')
+    .eq('customer_email', customerEmail)
+    .single();
+  
+  if (subByEmail) {
+    subscription = subByEmail;
+  } else {
+    // Try to find by profile email (for older records without customer_email)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('email', customerEmail)
+      .single();
+    
+    if (profile) {
+      const { data: subByUser } = await supabase
+        .from('subscriptions')
+        .select('id, status, payment_retry_count')
+        .eq('user_id', profile.id)
+        .single();
+      
+      if (subByUser) {
+        subscription = subByUser;
+        // Update the subscription to have customer_email for future lookups
+        await supabase
+          .from('subscriptions')
+          .update({ customer_email: customerEmail })
+          .eq('id', subByUser.id);
+      }
+    }
+  }
+  
+  if (!subscription) {
+    console.log("[Dodo Webhook] No subscription found for:", customerEmail);
+    return;
+  }
+  
+  const retryCount = (subscription.payment_retry_count || 0) + 1;
+  
+  // Update subscription to payment_failed/grace_period status
+  const { error: updateError } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'payment_failed',
+      payment_failed_at: now.toISOString(),
+      grace_period_ends_at: gracePeriodEndsAt.toISOString(),
+      account_deletion_scheduled_at: accountDeletionAt.toISOString(),
+      payment_retry_count: retryCount,
+      last_payment_error: failureReason,
+      updated_at: now.toISOString(),
+    })
+    .eq('customer_email', customerEmail);
+  
+  if (updateError) {
+    console.error("[Dodo Webhook] Failed to update subscription:", updateError);
+    return;
+  }
+  
+  // Log the payment failure
+  await supabase
+    .from('payment_failure_logs')
+    .insert({
+      subscription_id: subscription.id,
+      customer_email: customerEmail,
+      failure_reason: failureReason,
+      payment_provider: 'dodo',
+      payment_id: paymentId,
+      attempted_at: now.toISOString(),
+    });
+  
+  // Send payment failed email with retry date
+  try {
+    const userName = customerEmail.split('@')[0]; // Fallback name
+    await sendPaymentFailedEmail({
+      email: customerEmail,
+      name: userName,
+      retryDate: gracePeriodEndsAt,
+    });
+    
+    // Mark email as sent
+    await supabase
+      .from('subscriptions')
+      .update({ payment_failed_email_sent: true })
+      .eq('customer_email', customerEmail);
+    
+    console.log("[Dodo Webhook] Payment failed email sent to:", customerEmail);
+  } catch (emailError) {
+    console.error("[Dodo Webhook] Failed to send payment failed email:", emailError);
+  }
+  
+  console.log("[Dodo Webhook] Payment failed processed for:", customerEmail, "Grace period ends:", gracePeriodEndsAt);
+}

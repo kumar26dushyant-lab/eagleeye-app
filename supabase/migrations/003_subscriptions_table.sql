@@ -89,7 +89,7 @@ BEGIN
     'trialing',
     'trial',
     NOW(),
-    NOW() + INTERVAL '14 days'
+    NOW() + INTERVAL '7 days'
   );
   RETURN NEW;
 END;

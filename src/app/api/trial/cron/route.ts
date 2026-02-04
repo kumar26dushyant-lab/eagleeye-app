@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
-  sendDay3Reminder,
   sendDay1Reminder,
   sendTrialExpiredEmail,
 } from '@/lib/trial/emails'
@@ -10,9 +9,11 @@ import {
  * Trial reminder cron job
  * 
  * Call this endpoint daily to send trial reminders:
- * - Day 11: "3 days left" reminder
- * - Day 13: "Tomorrow" reminder
- * - Day 15: "Expired" email (if no subscription)
+ * - Day 6 (1 day left): "Tomorrow your card will be charged" reminder
+ * - Day 8+: "Expired" email (if payment failed)
+ * 
+ * Note: Auto-charging happens via Dodo webhook when trial ends.
+ * This cron only sends reminder emails.
  * 
  * Set up in vercel.json:
  * {
@@ -35,8 +36,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const now = new Date()
     const results = {
-      day3Reminders: 0,
-      day1Reminders: 0,
+      day1Reminders: 0,  // Sent on day 6 (1 day left)
       expiredEmails: 0,
       errors: [] as string[],
     }
@@ -82,18 +82,7 @@ export async function GET(request: NextRequest) {
           trialEndsAt: trialEnd,
         }
 
-        // 3 days left (Day 11 of trial)
-        if (daysLeft === 3 && !sub.day3_reminder_sent) {
-          await sendDay3Reminder(reminderData)
-          results.day3Reminders++
-          
-          await (supabase as any)
-            .from('subscriptions')
-            .update({ day3_reminder_sent: true })
-            .eq('user_id', sub.user_id)
-        }
-
-        // 1 day left (Day 13 of trial)
+        // Day 6 (1 day left) - Send "Your card will be charged tomorrow" reminder
         if (daysLeft === 1 && !sub.day1_reminder_sent) {
           await sendDay1Reminder(reminderData)
           results.day1Reminders++
@@ -104,8 +93,9 @@ export async function GET(request: NextRequest) {
             .eq('user_id', sub.user_id)
         }
 
-        // Trial expired
-        if (daysLeft <= 0 && sub.status === 'trialing' && !sub.expired_email_sent) {
+        // Trial expired & payment failed - only send if status is still trialing after day 7
+        // (Dodo auto-charges, so this only fires if payment failed)
+        if (daysLeft <= -1 && sub.status === 'trialing' && !sub.expired_email_sent) {
           await sendTrialExpiredEmail({ 
             email: sub.email, 
             name: profile?.full_name || 'there' 
@@ -116,7 +106,7 @@ export async function GET(request: NextRequest) {
             .from('subscriptions')
             .update({ 
               expired_email_sent: true,
-              status: 'expired' 
+              status: 'payment_failed' 
             })
             .eq('user_id', sub.user_id)
         }

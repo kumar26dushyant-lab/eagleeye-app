@@ -1,6 +1,7 @@
 // API endpoint to disconnect integrations
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendIntegrationDisconnectedEmail } from '@/lib/email'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
   }
 
-  const validProviders = ['slack', 'asana', 'linear', 'clickup', 'jira', 'notion', 'github', 'teams']
+  const validProviders = ['slack', 'asana', 'linear', 'clickup', 'jira', 'notion', 'github', 'teams', 'whatsapp']
   if (!validProviders.includes(provider)) {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 })
   }
@@ -41,6 +42,18 @@ export async function POST(request: NextRequest) {
           .delete()
           .eq('user_id', user.id)
           .eq('provider', provider)
+        
+        // Send disconnection notification email
+        if (user.email) {
+          const providerDisplayName = getProviderDisplayName(provider)
+          await sendIntegrationDisconnectedEmail({
+            to: user.email,
+            integrationName: providerDisplayName,
+            userName: user.user_metadata?.full_name,
+            reason: 'You disconnected this integration',
+          })
+          console.log('[Integration] Disconnection email sent to:', user.email)
+        }
       }
       
       // For env-based tokens, we need to clear them
@@ -166,4 +179,19 @@ function getConnectionInstructions(provider: string): { envKey: string; docUrl: 
     },
   }
   return instructions[provider] || { envKey: '', docUrl: '', steps: ['Contact support for setup instructions'] }
+}
+
+function getProviderDisplayName(provider: string): string {
+  const names: Record<string, string> = {
+    slack: 'Slack',
+    asana: 'Asana',
+    linear: 'Linear',
+    clickup: 'ClickUp',
+    jira: 'Jira',
+    notion: 'Notion',
+    github: 'GitHub',
+    teams: 'Microsoft Teams',
+    whatsapp: 'WhatsApp Business',
+  }
+  return names[provider] || provider
 }

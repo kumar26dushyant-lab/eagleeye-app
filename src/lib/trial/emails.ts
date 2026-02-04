@@ -36,7 +36,7 @@ export async function sendWelcomeEmail(data: ReminderData): Promise<boolean> {
     await resend.emails.send({
       from: 'EagleEye <hello@eagleeye.work>',
       to: data.email,
-      subject: '🦅 Welcome to EagleEye - Your 14-day trial starts now!',
+      subject: '🦅 Welcome to EagleEye - Your 7-day trial starts now!',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; background: #0a0a0a; color: #fafafa;">
           <div style="text-align: center; margin-bottom: 32px;">
@@ -46,12 +46,12 @@ export async function sendWelcomeEmail(data: ReminderData): Promise<boolean> {
           
           <p style="font-size: 16px; line-height: 1.6;">Hi ${data.name},</p>
           
-          <p style="font-size: 16px; line-height: 1.6;">Your <strong>14-day free trial</strong> has started. You have full access to all Founder features.</p>
+          <p style="font-size: 16px; line-height: 1.6;">Your <strong>7-day free trial</strong> has started. You have full access to all Solo plan features.</p>
           
           <div style="background: #1a1a1a; border-radius: 12px; padding: 24px; margin: 24px 0;">
             <h3 style="margin: 0 0 16px 0; color: #60a5fa; font-size: 16px;">What you can do now:</h3>
             <ul style="color: #a1a1aa; margin: 0; padding-left: 20px; line-height: 1.8;">
-              <li>Connect Slack, Asana, Jira, and more</li>
+              <li>Connect WhatsApp Business, Slack, Asana & more</li>
               <li>Get AI-powered priority scoring</li>
               <li>Receive real-time notifications</li>
               <li>Daily digest via Slack DM</li>
@@ -175,7 +175,7 @@ export async function sendDay1Reminder(data: ReminderData): Promise<boolean> {
           <div style="background: #172554; border: 1px solid #1d4ed8; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
             <p style="margin: 0; color: #93c5fd; font-size: 15px;">
               <strong>Tomorrow (${data.trialEndsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}):</strong><br>
-              Your Founder plan will begin.
+              Your Solo plan will begin.
             </p>
           </div>
 
@@ -207,7 +207,7 @@ export async function sendDay1Reminder(data: ReminderData): Promise<boolean> {
 }
 
 /**
- * Trial expired (if payment fails or no card)
+ * Trial expired (if payment fails after 7 days)
  */
 export async function sendTrialExpiredEmail(data: { email: string; name: string }): Promise<boolean> {
   const resend = getResend()
@@ -229,7 +229,7 @@ export async function sendTrialExpiredEmail(data: { email: string; name: string 
           
           <p style="font-size: 16px; line-height: 1.6;">Hi ${data.name},</p>
           
-          <p style="font-size: 16px; line-height: 1.6;">Your 14-day EagleEye trial has ended. Your account is now in limited mode.</p>
+          <p style="font-size: 16px; line-height: 1.6;">Your 7-day EagleEye trial has ended. Your account is now in limited mode.</p>
 
           <div style="background: #1a1a1a; border-radius: 12px; padding: 24px; margin: 24px 0;">
             <h3 style="margin: 0 0 16px 0; color: #f97316; font-size: 16px;">What's limited now:</h3>
@@ -445,6 +445,133 @@ export async function sendCancellationEmail(data: { email: string; name: string;
     return true
   } catch (error) {
     console.error('Failed to send cancellation email:', error)
+    return false
+  }
+}
+
+/**
+ * Account deletion warning - sent 24 hours before deletion
+ */
+export async function sendAccountDeletionWarningEmail(data: { email: string; name: string; deletionDate: Date }): Promise<boolean> {
+  const resend = getResend()
+  if (!resend) return false
+
+  const baseUrl = getBaseUrl()
+
+  try {
+    await resend.emails.send({
+      from: 'EagleEye <hello@eagleeye.work>',
+      to: data.email,
+      subject: '🚨 URGENT: Your EagleEye account will be deleted tomorrow',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; background: #0a0a0a; color: #fafafa;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <span style="font-size: 48px;">🚨</span>
+            <h1 style="color: #ef4444; margin: 16px 0 0 0; font-size: 24px;">Account Deletion Warning</h1>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6;">Hi ${data.name},</p>
+          
+          <p style="font-size: 16px; line-height: 1.6;">Your payment failed and we've been unable to charge your card. Your EagleEye account is scheduled for deletion.</p>
+
+          <div style="background: #450a0a; border: 2px solid #dc2626; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0; color: #fca5a5; font-size: 15px;">
+              <strong>Your account will be deleted on</strong><br>
+              <span style="font-size: 24px; font-weight: bold; color: #ef4444;">${data.deletionDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+            </p>
+          </div>
+
+          <p style="font-size: 16px; line-height: 1.6; color: #fca5a5;">
+            <strong>All your data will be permanently lost</strong>, including:
+          </p>
+          
+          <ul style="color: #a1a1aa; line-height: 1.8; font-size: 15px;">
+            <li>Integration connections (Asana, Linear, Slack, etc.)</li>
+            <li>Historical insights and signals</li>
+            <li>Notification preferences and settings</li>
+          </ul>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${baseUrl}/dashboard/billing" style="display: inline-block; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 16px 40px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 18px;">
+              Update Payment Now →
+            </a>
+          </div>
+
+          <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6; text-align: center;">
+            Having trouble? Reply to this email or contact <a href="mailto:support@eagleeye.work" style="color: #60a5fa;">support@eagleeye.work</a><br>
+            We can help you restore access.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #27272a; margin: 32px 0;">
+
+          <p style="color: #52525b; font-size: 13px; text-align: center; margin: 0;">
+            This is an automated message. Your subscription will resume immediately once payment is successful.
+          </p>
+        </div>
+      `,
+    })
+    return true
+  } catch (error) {
+    console.error('Failed to send account deletion warning email:', error)
+    return false
+  }
+}
+
+/**
+ * Account deleted confirmation
+ */
+export async function sendAccountDeletedEmail(data: { email: string; name: string }): Promise<boolean> {
+  const resend = getResend()
+  if (!resend) return false
+
+  const baseUrl = getBaseUrl()
+
+  try {
+    await resend.emails.send({
+      from: 'EagleEye <hello@eagleeye.work>',
+      to: data.email,
+      subject: 'Your EagleEye account has been deleted',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; background: #0a0a0a; color: #fafafa;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <span style="font-size: 32px;">👋</span>
+            <h1 style="color: #71717a; margin: 16px 0 0 0; font-size: 24px;">Account Deleted</h1>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6;">Hi ${data.name},</p>
+          
+          <p style="font-size: 16px; line-height: 1.6;">Your EagleEye account has been deleted due to payment failure.</p>
+
+          <div style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; margin: 24px 0;">
+            <p style="margin: 0; color: #a1a1aa; font-size: 15px; line-height: 1.6;">
+              All your data, integrations, and settings have been permanently removed from our systems.
+            </p>
+          </div>
+
+          <p style="font-size: 16px; line-height: 1.6;">Want to come back? You're always welcome!</p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${baseUrl}/signup" style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+              Start Fresh →
+            </a>
+          </div>
+
+          <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6; text-align: center;">
+            If you believe this was a mistake, contact <a href="mailto:support@eagleeye.work" style="color: #60a5fa;">support@eagleeye.work</a> within 7 days<br>
+            and we may be able to help recover your account.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #27272a; margin: 32px 0;">
+
+          <p style="color: #52525b; font-size: 13px; text-align: center; margin: 0;">
+            Thank you for trying EagleEye. We hope to see you again!
+          </p>
+        </div>
+      `,
+    })
+    return true
+  } catch (error) {
+    console.error('Failed to send account deleted email:', error)
     return false
   }
 }

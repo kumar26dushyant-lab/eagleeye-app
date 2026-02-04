@@ -13,24 +13,23 @@ function getStripe(): Stripe {
   return stripeInstance
 }
 
-// Pricing tiers for EagleEye - No free tier, only 14-day trial then paid
+// Pricing tiers for EagleEye - No free tier, only 7-day trial then paid
 export const PRICING_TIERS = {
   founder: {
     id: 'founder',
-    name: 'Founder',
-    description: 'For solo founders & small teams',
+    name: 'Solo',
+    description: 'For Founders, VPs & Department Heads',
     price: 29,
     priceId: process.env.STRIPE_FOUNDER_PRICE_ID,
     popular: true,
-    trialDays: 14,
+    trialDays: 7,
     features: [
       'Unlimited integrations',
-      'Real-time notifications',
-      'AI-powered insights',
-      '90-day history',
-      'Daily email digest',
-      'Web push alerts',
-      'Priority support',
+      'Real-time signal detection',
+      'AI-powered daily briefs',
+      '90-day signal history',
+      'Email & push notifications',
+      'Email support',
     ],
     limits: {
       integrations: -1, // unlimited
@@ -43,18 +42,17 @@ export const PRICING_TIERS = {
   team: {
     id: 'team',
     name: 'Team',
-    description: 'For growing teams',
+    description: 'For growing teams & departments',
     price: 79,
     priceId: process.env.STRIPE_TEAM_PRICE_ID,
-    trialDays: 14,
+    trialDays: 7,
     features: [
-      'Everything in Founder',
+      'Everything in Solo',
       'Up to 10 team members',
-      'Team dashboard',
-      'Shared priorities',
-      '1-year history',
-      'Custom integrations',
-      'Dedicated support',
+      'Team dashboard & analytics',
+      'Shared priorities view',
+      '1-year signal history',
+      'Integration requests',
     ],
     limits: {
       integrations: -1,
@@ -76,11 +74,10 @@ export const PRICING_TIERS = {
     features: [
       'Everything in Team',
       'Unlimited team members',
-      'SSO / SAML',
+      'SSO / SAML authentication',
       'Custom AI training',
-      'On-premise option',
-      'SLA guarantee',
-      'Dedicated success manager',
+      'On-premise deployment',
+      'SLA available',
     ],
     limits: {
       integrations: -1,
@@ -129,7 +126,7 @@ export async function createCheckoutSession({
     metadata,
     subscription_data: {
       metadata,
-      // Add 14-day free trial
+      // Add trial period (7 days) - card required upfront, charged after trial ends
       ...(trialDays && { trial_period_days: trialDays }),
     },
     allow_promotion_codes: true,

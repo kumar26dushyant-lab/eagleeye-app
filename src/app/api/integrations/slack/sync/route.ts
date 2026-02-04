@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendIntegrationFailedEmail } from '@/lib/email'
+import { processSignalNotifications } from '@/lib/notifications/triggers'
 import { 
   createSlackClient,
   getSlackChannels, 
@@ -31,6 +33,15 @@ export async function POST(request: Request) {
     const slackUserId = await getAuthenticatedUserId(client)
     
     if (!slackUserId) {
+      // Send failure notification
+      if (user.email) {
+        await sendIntegrationFailedEmail({
+          to: user.email,
+          integrationName: 'Slack',
+          userName: user.user_metadata?.full_name,
+          errorDetails: 'Could not authenticate with Slack. Please reconnect your account.',
+        })
+      }
       return NextResponse.json(
         { error: 'Could not determine Slack user ID' },
         { status: 400 }
@@ -52,6 +63,25 @@ export async function POST(request: Request) {
     // Convert to signals
     const signals = mentions.map(m => mentionToSignal(m, user.id))
     
+    // Trigger realtime notifications for urgent signals
+    let notificationsTriggered = 0
+    try {
+      const notifResult = await processSignalNotifications(
+        user.id,
+        signals.map(s => ({
+          id: s.id || '',
+          signal_type: s.signal_type || 'mention',
+          sender_name: s.sender_name,
+          snippet: s.snippet,
+          channel_name: s.channel_name,
+        }))
+      )
+      notificationsTriggered = notifResult.notified
+    } catch (notifError) {
+      console.error('[Slack Sync] Notification error:', notifError)
+      // Don't fail the sync if notifications fail
+    }
+    
     // For now, return the signals without DB storage
     // (DB schema may not match exactly)
     return NextResponse.json({
@@ -59,10 +89,22 @@ export async function POST(request: Request) {
       channelsSynced: channelsToScan.length,
       mentionsFound: mentions.length,
       signalsCreated: signals.length,
+      notificationsTriggered,
       signals,
     })
   } catch (error) {
     console.error('Slack sync error:', error)
+    
+    // Send failure notification email
+    if (user.email) {
+      await sendIntegrationFailedEmail({
+        to: user.email,
+        integrationName: 'Slack',
+        userName: user.user_metadata?.full_name,
+        errorDetails: error instanceof Error ? error.message : 'Unknown sync error',
+      })
+    }
+    
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

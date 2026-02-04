@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Search,
   Mail,
-  MessageSquare,
   Zap,
   Link2,
   Bell,
@@ -16,11 +15,12 @@ import {
   CreditCard,
   Shield,
   Clock,
-  CheckCircle2,
-  ExternalLink
+  Copy,
+  CheckCircle2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from 'sonner'
 
 // FAQ Categories with questions
 const FAQ_CATEGORIES = [
@@ -32,7 +32,7 @@ const FAQ_CATEGORIES = [
     questions: [
       {
         q: 'How does EagleEye work?',
-        a: 'EagleEye connects to your work tools (Asana, Slack, Jira, etc.) and uses AI to analyze your tasks, messages, and priorities. Every morning, you get a personalized brief that tells you exactly what needs your attention - no more inbox overwhelm!'
+        a: 'EagleEye connects to your work tools (WhatsApp Business, Slack, Asana, Jira, etc.) and uses AI to analyze your tasks, messages, and priorities. Every morning, you get a personalized brief that tells you exactly what needs your attention - no more inbox overwhelm!'
       },
       {
         q: 'How long does setup take?',
@@ -59,12 +59,16 @@ const FAQ_CATEGORIES = [
         a: 'Go to Dashboard → Integrations → Click "Connect" next to Asana. You\'ll be redirected to Asana to authorize EagleEye. Once approved, select which projects you want to track, and you\'re done!'
       },
       {
+        q: 'How do I connect WhatsApp Business?',
+        a: 'Go to Dashboard → Integrations → Click "Connect" next to WhatsApp Business. You\'ll need your Meta Business Account credentials (Access Token, Phone Number ID, Business Account ID) from the Meta Developer Portal. We only read incoming messages - we never send messages on your behalf.'
+      },
+      {
         q: 'How do I connect Slack?',
         a: 'Go to Dashboard → Integrations → Click "Connect" next to Slack. Authorize EagleEye in your Slack workspace, then choose which channels to monitor. We only read messages - we never post on your behalf.'
       },
       {
         q: 'Can I connect multiple workspaces?',
-        a: 'Yes! You can connect multiple Slack workspaces, multiple Asana workspaces, etc. Each integration is tracked separately, and your brief will consolidate information from all of them.'
+        a: 'Yes! You can connect multiple Slack workspaces, multiple Asana workspaces, WhatsApp Business accounts, etc. Each integration is tracked separately, and your brief will consolidate information from all of them.'
       },
       {
         q: 'Why isn\'t my integration syncing?',
@@ -159,8 +163,8 @@ const FAQ_CATEGORIES = [
     color: 'text-emerald-400',
     questions: [
       {
-        q: 'How does the 14-day trial work?',
-        a: 'You get full access to all features for 14 days, completely free. No credit card required to start. At the end of your trial, you\'ll be prompted to choose a plan to continue.'
+        q: 'How does the 7-day trial work?',
+        a: 'You get full access to all features for 7 days. Card is required upfront but you won\'t be charged until day 8. You can cancel anytime before the trial ends.'
       },
       {
         q: 'What happens when my trial ends?',
@@ -192,7 +196,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: 'How long do you keep my data?',
-        a: 'Integration data is processed in real-time and not stored permanently. Generated briefs are kept for 90 days (Founder plan) or 1 year (Team plan) so you can reference past summaries. You can request deletion anytime.'
+        a: 'Integration data is processed in real-time and not stored permanently. Generated briefs are kept for 90 days (Solo plan) or 1 year (Team plan) so you can reference past summaries. You can request deletion anytime.'
       },
       {
         q: 'Is EagleEye SOC 2 compliant?',
@@ -301,10 +305,9 @@ function CategorySection({ category, isExpanded, onToggle }: {
 export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategory, setExpandedCategory] = useState<string | null>('getting-started')
-  const [showTicketForm, setShowTicketForm] = useState(false)
-  const [ticketSubject, setTicketSubject] = useState('')
-  const [ticketMessage, setTicketMessage] = useState('')
-  const [ticketSubmitted, setTicketSubmitted] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const supportEmail = 'support@eagleeye.work'
 
   // Filter FAQs based on search
   const filteredCategories = searchQuery
@@ -318,42 +321,11 @@ export default function SupportPage() {
       })).filter(cat => cat.questions.length > 0)
     : FAQ_CATEGORIES
 
-  const handleSubmitTicket = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      const response = await fetch('/api/support/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: ticketSubject,
-          message: ticketMessage
-        })
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to submit ticket')
-      }
-
-      setTicketSubmitted(true)
-      setTimeout(() => {
-        setShowTicketForm(false)
-        setTicketSubmitted(false)
-        setTicketSubject('')
-        setTicketMessage('')
-      }, 3000)
-    } catch (error) {
-      console.error('Failed to submit ticket:', error)
-      // Still show success for now as email fallback works
-      setTicketSubmitted(true)
-      setTimeout(() => {
-        setShowTicketForm(false)
-        setTicketSubmitted(false)
-        setTicketSubject('')
-        setTicketMessage('')
-      }, 3000)
-    }
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText(supportEmail)
+    setCopied(true)
+    toast.success('Email copied to clipboard!')
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -389,11 +361,62 @@ export default function SupportPage() {
           </motion.p>
         </div>
 
-        {/* Search Bar */}
+        {/* Email Support Card - Primary CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-8"
+        >
+          <Card className="bg-gradient-to-br from-blue-900/40 to-cyan-900/30 border-blue-700/50">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="p-4 bg-blue-500/20 rounded-2xl">
+                  <Mail className="w-10 h-10 text-blue-400" />
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-xl font-semibold text-white mb-2">Email Support</h3>
+                  <p className="text-zinc-400 mb-4">
+                    Have a question or issue? Email us directly and we&apos;ll get back to you within 24 hours.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <a 
+                      href={`mailto:${supportEmail}`}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                    >
+                      <Mail className="w-4 h-4" />
+                      {supportEmail}
+                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyEmail}
+                      className="border-zinc-600 text-zinc-300 hover:bg-zinc-800"
+                    >
+                      {copied ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 mr-2 text-green-400" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
           className="relative mb-8"
         >
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-500" />
@@ -405,132 +428,6 @@ export default function SupportPage() {
             className="w-full pl-12 pr-4 py-4 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
           />
         </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"
-        >
-          <Card 
-            className="bg-gradient-to-br from-blue-900/30 to-blue-950/30 border-blue-800/50 cursor-pointer hover:border-blue-700/50 transition-colors"
-            onClick={() => setShowTicketForm(true)}
-          >
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="p-3 bg-blue-500/20 rounded-xl">
-                <MessageSquare className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Submit a Ticket</h3>
-                <p className="text-zinc-400 text-sm">Can't find an answer? Contact us directly.</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-900/30 to-purple-950/30 border-purple-800/50">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="p-3 bg-purple-500/20 rounded-xl">
-                <Mail className="w-6 h-6 text-purple-400" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Email Support</h3>
-                <p className="text-zinc-400 text-sm">
-                  <a href="mailto:support@eagleeye.work" className="hover:text-purple-400 transition-colors">
-                    support@eagleeye.work
-                  </a>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Support Ticket Form Modal */}
-        <AnimatePresence>
-          {showTicketForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-              onClick={() => !ticketSubmitted && setShowTicketForm(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg"
-                onClick={e => e.stopPropagation()}
-              >
-                {ticketSubmitted ? (
-                  <div className="text-center py-8">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4"
-                    >
-                      <CheckCircle2 className="w-8 h-8 text-green-400" />
-                    </motion.div>
-                    <h3 className="text-xl font-semibold text-white mb-2">Ticket Submitted!</h3>
-                    <p className="text-zinc-400">We'll get back to you within 24 hours.</p>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="text-xl font-semibold text-white mb-1">Submit a Support Ticket</h3>
-                    <p className="text-zinc-400 text-sm mb-6">We typically respond within 24 hours.</p>
-                    
-                    <form onSubmit={handleSubmitTicket} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">
-                          Subject
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={ticketSubject}
-                          onChange={(e) => setTicketSubject(e.target.value)}
-                          placeholder="What's the issue about?"
-                          className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">
-                          Message
-                        </label>
-                        <textarea
-                          required
-                          rows={5}
-                          value={ticketMessage}
-                          onChange={(e) => setTicketMessage(e.target.value)}
-                          placeholder="Describe your issue in detail. Include any error messages or screenshots if relevant."
-                          className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-                        />
-                      </div>
-
-                      <div className="flex gap-3 pt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                          onClick={() => setShowTicketForm(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Submit Ticket
-                        </Button>
-                      </div>
-                    </form>
-                  </>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* FAQ Categories */}
         <motion.div
@@ -561,13 +458,16 @@ export default function SupportPage() {
               </div>
               <h3 className="text-lg font-medium text-white mb-2">No results found</h3>
               <p className="text-zinc-400 mb-6">
-                Try a different search term or browse topics above.
+                Try a different search term or email us directly.
               </p>
               <Button
-                onClick={() => setShowTicketForm(true)}
+                asChild
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Contact Support
+                <a href={`mailto:${supportEmail}`}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email Support
+                </a>
               </Button>
             </div>
           )}
@@ -582,27 +482,17 @@ export default function SupportPage() {
         >
           <h3 className="text-lg font-medium text-white mb-2">Still need help?</h3>
           <p className="text-zinc-400 mb-6">
-            Our support team is here to assist you.
+            Our support team is here to assist you via email.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              onClick={() => setShowTicketForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Submit a Ticket
-            </Button>
-            <Button
-              variant="outline"
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              asChild
-            >
-              <a href="mailto:support@eagleeye.work">
-                <Mail className="w-4 h-4 mr-2" />
-                Email Us
-              </a>
-            </Button>
-          </div>
+          <Button
+            asChild
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <a href={`mailto:${supportEmail}`}>
+              <Mail className="w-4 h-4 mr-2" />
+              Email Us at {supportEmail}
+            </a>
+          </Button>
         </motion.div>
       </div>
     </div>

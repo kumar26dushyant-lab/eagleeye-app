@@ -1,6 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getStripe, PRICING_TIERS, PricingTier } from '@/lib/payments/stripe'
+import DodoPayments from 'dodopayments'
+
+// Pricing tiers configuration
+const PRICING_TIERS: Record<string, { name: string; price: number; productId: string | undefined }> = {
+  founder: { 
+    name: 'Founder', 
+    price: 29, 
+    productId: process.env.NEXT_PUBLIC_DODO_SOLO_PRODUCT_ID || process.env.DODO_SOLO_PRODUCT_ID 
+  },
+  solo: { 
+    name: 'Solo', 
+    price: 29, 
+    productId: process.env.NEXT_PUBLIC_DODO_SOLO_PRODUCT_ID || process.env.DODO_SOLO_PRODUCT_ID 
+  },
+  team: { 
+    name: 'Team', 
+    price: 79, 
+    productId: process.env.NEXT_PUBLIC_DODO_TEAM_PRODUCT_ID || process.env.DODO_TEAM_PRODUCT_ID 
+  },
+}
+
+function getDodoClient() {
+  const apiKey = process.env.DODO_PAYMENTS_API_KEY
+  if (!apiKey) {
+    throw new Error('DODO_PAYMENTS_API_KEY not configured')
+  }
+  
+  return new DodoPayments({
+    bearerToken: apiKey.trim(),
+    environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as 'test_mode' | 'live_mode') || 'test_mode',
+  })
+}
 
 /**
  * POST /api/payments/change-plan
@@ -8,11 +39,6 @@ import { getStripe, PRICING_TIERS, PricingTier } from '@/lib/payments/stripe'
  * 
  * During trial: Updates the pending plan, trial clock continues
  * Active subscription: Prorates the change
- * 
- * This ensures:
- * - Trial clock never resets
- * - User is charged for their final plan choice at trial end
- * - Upgrades and downgrades are allowed during trial
  */
 export async function POST(request: NextRequest) {
   try {
@@ -28,26 +54,26 @@ export async function POST(request: NextRequest) {
 
     const { newTier } = await request.json()
 
-    if (!newTier || !PRICING_TIERS[newTier as PricingTier]) {
+    const tierConfig = PRICING_TIERS[newTier]
+    if (!tierConfig) {
       return NextResponse.json(
-        { error: 'Invalid plan. Choose founder or team.' },
+        { error: 'Invalid plan. Choose founder, solo, or team.' },
         { status: 400 }
       )
     }
 
-    const tierConfig = PRICING_TIERS[newTier as PricingTier]
-    if (!tierConfig.priceId) {
+    if (!tierConfig.productId) {
       return NextResponse.json(
         { error: 'This plan is not available for self-service' },
         { status: 400 }
       )
     }
 
-    // Get user's subscription (cast to any to bypass type checking)
+    // Get user's subscription by email
     const { data: subscription } = await (supabase as any)
       .from('subscriptions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('customer_email', user.email?.toLowerCase())
       .single()
 
     if (!subscription) {
@@ -57,8 +83,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If no Stripe subscription yet (just a trial record), redirect to checkout
-    if (!subscription.stripe_subscription_id) {
+    // If no payment subscription yet, redirect to checkout
+    if (!subscription.dodo_subscription_id) {
       return NextResponse.json({
         success: false,
         needsCheckout: true,
@@ -66,16 +92,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if during trial
-    const isTrialing = subscription.status === 'trialing'
-    const trialEndsAt = subscription.trial_ends_at ? new Date(subscription.trial_ends_at) : null
-
-    // Get current Stripe subscription
-    const stripeSubscription = await getStripe().subscriptions.retrieve(subscription.stripe_subscription_id)
-    const currentPriceId = stripeSubscription.items.data[0]?.price.id
-
     // Same plan? No change needed
-    if (currentPriceId === tierConfig.priceId) {
+    const normalizedCurrentTier = subscription.tier === 'solo' ? 'founder' : subscription.tier
+    const normalizedNewTier = newTier === 'solo' ? 'founder' : newTier
+    if (normalizedCurrentTier === normalizedNewTier) {
       return NextResponse.json({
         success: true,
         message: 'You are already on this plan',
@@ -83,42 +103,27 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Update the subscription to the new plan
-    const updatedSubscription = await getStripe().subscriptions.update(
-      subscription.stripe_subscription_id,
-      {
-        items: [{
-          id: stripeSubscription.items.data[0].id,
-          price: tierConfig.priceId,
-        }],
-        // If trialing, keep the trial and just change what they'll be charged for
-        // Trial end date remains the same!
-        proration_behavior: isTrialing ? 'none' : 'create_prorations',
-        // Don't charge immediately during trial
-        ...(isTrialing && { billing_cycle_anchor: 'unchanged' }),
-      }
-    )
+    // Check if during trial
+    const isTrialing = subscription.status === 'trialing'
 
-    // Update local database
+    // Update local database with new tier
     await (supabase as any)
       .from('subscriptions')
       .update({
         tier: newTier,
-        pending_tier: null, // Clear any pending tier
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', user.id)
+      .eq('customer_email', user.email?.toLowerCase())
 
-    const isUpgrade = tierConfig.price! > (PRICING_TIERS[subscription.tier as PricingTier]?.price || 0)
+    const isUpgrade = tierConfig.price > (PRICING_TIERS[subscription.tier]?.price || 0)
 
     return NextResponse.json({
       success: true,
       message: isTrialing
-        ? `Plan changed to ${tierConfig.name}. You'll be charged $${tierConfig.price}/mo when your trial ends${trialEndsAt ? ` on ${trialEndsAt.toLocaleDateString()}` : ''}.`
-        : `Plan ${isUpgrade ? 'upgraded' : 'changed'} to ${tierConfig.name}. ${isUpgrade ? 'Prorated charges applied.' : 'Changes take effect immediately.'}`,
+        ? `Plan changed to ${tierConfig.name}. You'll be charged $${tierConfig.price}/mo when your trial ends.`
+        : `Plan ${isUpgrade ? 'upgraded' : 'changed'} to ${tierConfig.name}. Changes take effect on your next billing cycle.`,
       newTier,
       isTrialing,
-      trialEndsAt: trialEndsAt?.toISOString(),
     })
   } catch (error: any) {
     console.error('Change plan error:', error)

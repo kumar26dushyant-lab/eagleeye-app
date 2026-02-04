@@ -29,7 +29,7 @@ function BillingRedirectContent() {
 
 /**
  * Redirect old billing page to new dashboard/billing
- * Preserves query params for Stripe success redirect compatibility
+ * Preserves query params for payment success redirect compatibility
  */
 export default function OldBillingRedirect() {
   return (

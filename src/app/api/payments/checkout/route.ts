@@ -1,10 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createCheckoutSession, PRICING_TIERS } from '@/lib/payments/stripe'
 import { createClient } from '@/lib/supabase/server'
+import DodoPayments from 'dodopayments'
+
+// Product IDs mapped to tiers
+const TIER_PRODUCTS: Record<string, { productId: string | undefined; trialDays: number }> = {
+  founder: { 
+    productId: process.env.NEXT_PUBLIC_DODO_SOLO_PRODUCT_ID || process.env.DODO_SOLO_PRODUCT_ID,
+    trialDays: 7 
+  },
+  solo: { 
+    productId: process.env.NEXT_PUBLIC_DODO_SOLO_PRODUCT_ID || process.env.DODO_SOLO_PRODUCT_ID,
+    trialDays: 7 
+  },
+  team: { 
+    productId: process.env.NEXT_PUBLIC_DODO_TEAM_PRODUCT_ID || process.env.DODO_TEAM_PRODUCT_ID,
+    trialDays: 7 
+  },
+}
+
+function getDodoClient() {
+  const apiKey = process.env.DODO_PAYMENTS_API_KEY
+  if (!apiKey) {
+    throw new Error('DODO_PAYMENTS_API_KEY not configured')
+  }
+  
+  return new DodoPayments({
+    bearerToken: apiKey.trim(),
+    environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as 'test_mode' | 'live_mode') || 'test_mode',
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { tier, email } = await request.json()
+    const { tier, email, reactivation } = await request.json()
 
     // Enterprise needs contact - no checkout
     if (tier === 'enterprise') {
@@ -16,32 +44,31 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (!tier || !PRICING_TIERS[tier as keyof typeof PRICING_TIERS]) {
+    const tierConfig = TIER_PRODUCTS[tier]
+    if (!tierConfig) {
       return NextResponse.json(
-        { error: 'Invalid pricing tier. Choose founder or team.' },
+        { error: 'Invalid pricing tier. Choose founder, solo, or team.' },
         { status: 400 }
       )
     }
 
-    const tierConfig = PRICING_TIERS[tier as keyof typeof PRICING_TIERS]
-
-    // Check Stripe configuration
-    if (!process.env.STRIPE_SECRET_KEY) {
+    // Check Dodo configuration
+    if (!process.env.DODO_PAYMENTS_API_KEY) {
       return NextResponse.json({
         error: 'Payment system not configured',
         setup: {
-          step1: 'Create a Stripe account at https://stripe.com',
-          step2: 'Get your API keys from the Dashboard',
-          step3: 'Add STRIPE_SECRET_KEY to .env.local',
-          step4: 'Create products and add price IDs',
+          step1: 'Create a Dodo Payments account',
+          step2: 'Get your API key from the Dashboard',
+          step3: 'Add DODO_PAYMENTS_API_KEY to environment variables',
         },
       }, { status: 500 })
     }
 
-    if (!tierConfig.priceId) {
+    const productId = tierConfig.productId?.trim()
+    if (!productId) {
       return NextResponse.json({
-        error: 'Price not configured for this tier',
-        hint: `Add STRIPE_${tier.toUpperCase()}_PRICE_ID to .env.local`,
+        error: 'Product not configured for this tier',
+        hint: `Add DODO_${tier.toUpperCase()}_PRODUCT_ID to environment variables`,
       }, { status: 500 })
     }
 
@@ -54,25 +81,26 @@ export async function POST(request: NextRequest) {
       customerEmail = user.email
     }
 
-    // Create checkout session with 14-day trial
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    // Create checkout session with Dodo
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'
+    // For reactivation, redirect to dashboard. For new signup, go to success page
+    const returnUrl = reactivation 
+      ? `${baseUrl}/dashboard?reactivated=true`
+      : `${baseUrl}/checkout/success?tier=${tier}`
     
-    const session = await createCheckoutSession({
-      priceId: tierConfig.priceId,
-      customerEmail,
-      successUrl: `${baseUrl}/dashboard/integrations?welcome=true&tier=${tier}`,
-      cancelUrl: `${baseUrl}/pricing?cancelled=true`,
-      trialDays: tierConfig.trialDays || 14,
-      metadata: {
-        tier,
-        userId: user?.id || 'anonymous',
-      },
+    const client = getDodoClient()
+    const session = await client.checkoutSessions.create({
+      product_cart: [{ product_id: productId, quantity: 1 }],
+      customer: customerEmail ? { email: customerEmail, name: customerEmail.split('@')[0] } : undefined,
+      return_url: returnUrl,
+      // Note: Dodo handles trial at product level, not session level
+      // For reactivation, product should be configured without trial in Dodo dashboard
     })
 
     return NextResponse.json({
       success: true,
-      checkoutUrl: session.url,
-      sessionId: session.id,
+      checkoutUrl: session.checkout_url,
+      sessionId: (session as any).checkout_session_id || session.checkout_url,
     })
   } catch (error: any) {
     console.error('Checkout error:', error)

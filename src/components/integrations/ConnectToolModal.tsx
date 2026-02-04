@@ -17,6 +17,13 @@ interface ConnectModalProps {
   onConnected: () => void
 }
 
+interface FieldConfig {
+  name: string
+  label: string
+  placeholder: string
+  type: 'text' | 'password'
+}
+
 const TOOL_CONFIG: Record<string, {
   tokenName: string
   tokenPrefix: string
@@ -25,6 +32,8 @@ const TOOL_CONFIG: Record<string, {
   placeholder: string
   useOAuth?: boolean  // Use OAuth flow instead of token input
   oauthEndpoint?: string
+  isMultiField?: boolean  // WhatsApp needs multiple fields
+  fields?: FieldConfig[]
 }> = {
   slack: {
     tokenName: 'Bot Token',
@@ -177,11 +186,39 @@ const TOOL_CONFIG: Record<string, {
       },
     ],
   },
+  whatsapp: {
+    tokenName: 'Access Token',
+    tokenPrefix: '',
+    placeholder: 'Your Meta access token',
+    testEndpoint: '/api/whatsapp/connect',
+    isMultiField: true,  // Custom flag for multi-field input
+    fields: [
+      { name: 'accessToken', label: 'Access Token', placeholder: 'EAAGm0PX4ZCps...', type: 'password' },
+      { name: 'phoneNumberId', label: 'Phone Number ID', placeholder: '123456789012345', type: 'text' },
+      { name: 'businessAccountId', label: 'Business Account ID', placeholder: '987654321098765', type: 'text' },
+    ],
+    steps: [
+      {
+        title: 'Open Meta Developer Portal',
+        description: 'Go to your WhatsApp Business app settings',
+        link: 'https://developers.facebook.com/apps/',
+      },
+      {
+        title: 'Go to WhatsApp → API Setup',
+        description: 'Find your Phone Number ID and generate an Access Token',
+      },
+      {
+        title: 'Copy Your Credentials',
+        description: 'Copy Access Token, Phone Number ID, and Business Account ID',
+      },
+    ],
+  },
 }
 
 export function ConnectToolModal({ tool, isOpen, onClose, onConnected }: ConnectModalProps) {
   const [step, setStep] = useState(0)
   const [token, setToken] = useState('')
+  const [multiFields, setMultiFields] = useState<Record<string, string>>({})
   const [showToken, setShowToken] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -193,6 +230,49 @@ export function ConnectToolModal({ tool, isOpen, onClose, onConnected }: Connect
   }
 
   const handleConnect = async () => {
+    // Handle WhatsApp multi-field connection
+    if (config.isMultiField && config.fields) {
+      const missingFields = config.fields.filter(f => !multiFields[f.name]?.trim())
+      if (missingFields.length > 0) {
+        setError(`Please fill in: ${missingFields.map(f => f.label).join(', ')}`)
+        return
+      }
+
+      setIsConnecting(true)
+      setError(null)
+
+      try {
+        const res = await fetch(config.testEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: multiFields.accessToken,
+            phoneNumberId: multiFields.phoneNumberId,
+            businessAccountId: multiFields.businessAccountId,
+          }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Connection failed')
+        }
+
+        toast.success(`${tool.name} connected!`, {
+          description: data.phone_number ? `Phone: ${data.phone_number}` : 'Ready to receive messages',
+        })
+
+        onConnected()
+        onClose()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Connection failed')
+      } finally {
+        setIsConnecting(false)
+      }
+      return
+    }
+
+    // Standard single-token flow
     if (!token.trim()) {
       setError('Please enter your token')
       return
@@ -246,6 +326,7 @@ export function ConnectToolModal({ tool, isOpen, onClose, onConnected }: Connect
   const handleClose = () => {
     setStep(0)
     setToken('')
+    setMultiFields({})
     setError(null)
     onClose()
   }
@@ -386,6 +467,101 @@ export function ConnectToolModal({ tool, isOpen, onClose, onConnected }: Connect
                           </li>
                           <li className="flex items-center gap-2">
                             <Check className="h-3 w-3 text-green-500" /> Revoke access anytime from {tool.name} settings
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : config.isMultiField && config.fields ? (
+                // Multi-field input (WhatsApp)
+                <div>
+                  <div className="flex items-start gap-3 mb-6">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 font-semibold">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium mb-1">Enter Your Credentials</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Paste the credentials from Meta Developer Portal
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 mb-4">
+                    {config.fields.map((field) => (
+                      <div key={field.name}>
+                        <label className="text-sm text-muted-foreground mb-1 block">{field.label}</label>
+                        <div className="relative">
+                          <input
+                            type={field.type === 'password' && !showToken ? 'password' : 'text'}
+                            value={multiFields[field.name] || ''}
+                            onChange={(e) => {
+                              setMultiFields(prev => ({ ...prev, [field.name]: e.target.value }))
+                              setError(null)
+                            }}
+                            placeholder={field.placeholder}
+                            className="w-full p-3 bg-muted rounded-lg border border-border focus:border-primary focus:outline-none font-mono text-sm"
+                          />
+                          {field.type === 'password' && (
+                            <button
+                              type="button"
+                              onClick={() => setShowToken(!showToken)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-500 text-sm mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
+                      Back
+                    </Button>
+                    <Button 
+                      onClick={handleConnect} 
+                      disabled={isConnecting || !config.fields.every(f => multiFields[f.name]?.trim())}
+                      className="flex-1"
+                    >
+                      {isConnecting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Connecting...
+                        </>
+                      ) : (
+                        'Connect'
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* WhatsApp-specific info */}
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
+                    <div className="flex items-start gap-3">
+                      <Shield className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-blue-500">How WhatsApp Integration Works</p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-blue-500" /> Receives messages via secure webhooks
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-blue-500" /> Detects urgent, order, and complaint signals
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-blue-500" /> <strong>Read-only</strong> — we never send messages
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-3 w-3 text-blue-500" /> Disconnect anytime
                           </li>
                         </ul>
                       </div>

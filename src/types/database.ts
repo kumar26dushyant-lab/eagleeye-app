@@ -47,7 +47,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          provider: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams'
+          provider: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams' | 'whatsapp'
           access_token: string
           refresh_token: string | null
           token_expires_at: string | null
@@ -61,7 +61,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          provider: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams'
+          provider: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams' | 'whatsapp'
           access_token: string
           refresh_token?: string | null
           token_expires_at?: string | null
@@ -75,7 +75,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          provider?: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams'
+          provider?: 'asana' | 'clickup' | 'jira' | 'slack' | 'teams' | 'whatsapp'
           access_token?: string
           refresh_token?: string | null
           token_expires_at?: string | null
@@ -238,8 +238,8 @@ export interface Database {
           integration_id: string
           channel_id: string | null
           message_id: string | null
-          provider: 'slack' | 'teams'
-          signal_type: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation'
+          provider: 'slack' | 'teams' | 'whatsapp'
+          signal_type: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation' | 'order' | 'complaint' | 'positive_feedback'
           sender_name: string | null
           content_preview: string | null
           url: string | null
@@ -254,8 +254,8 @@ export interface Database {
           integration_id: string
           channel_id?: string | null
           message_id?: string | null
-          provider: 'slack' | 'teams'
-          signal_type: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation'
+          provider: 'slack' | 'teams' | 'whatsapp'
+          signal_type: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation' | 'order' | 'complaint' | 'positive_feedback'
           sender_name?: string | null
           content_preview?: string | null
           url?: string | null
@@ -270,8 +270,8 @@ export interface Database {
           integration_id?: string
           channel_id?: string | null
           message_id?: string | null
-          provider?: 'slack' | 'teams'
-          signal_type?: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation'
+          provider?: 'slack' | 'teams' | 'whatsapp'
+          signal_type?: 'mention' | 'dm' | 'urgent' | 'question' | 'blocker' | 'escalation' | 'order' | 'complaint' | 'positive_feedback'
           sender_name?: string | null
           content_preview?: string | null
           url?: string | null

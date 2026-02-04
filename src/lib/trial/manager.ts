@@ -12,26 +12,58 @@ export interface TrialStatus {
   pendingTier?: string | null
   hasPaymentMethod: boolean
   cancelAtPeriodEnd?: boolean
+  // Payment failure fields
+  paymentFailed?: boolean
+  gracePeriodEndsAt?: Date | null
 }
 
-export const TRIAL_DURATION_DAYS = 14
+export const TRIAL_DURATION_DAYS = 7
 
-// Subscription record type (not in generated Supabase types yet)
+// Subscription record type based on actual table schema
 interface SubscriptionRecord {
-  user_id: string
-  status: string
+  id: string
+  customer_email: string
+  dodo_customer_id?: string | null
+  dodo_subscription_id?: string | null
+  dodo_payment_id?: string | null
+  product_id?: string | null
   tier: string
-  pending_tier?: string | null
-  stripe_customer_id?: string | null
-  stripe_subscription_id?: string | null
-  trial_ends_at?: string | null
-  cancel_at_period_end?: boolean
-  current_period_end?: string | null
-  cancelled_at?: string | null
-  email?: string
-  normalized_email?: string
+  status: string
   created_at: string
   updated_at: string
+  trial_started_at?: string | null
+  trial_ends_at?: string | null
+  // Payment failure fields
+  payment_failed_at?: string | null
+  grace_period_ends_at?: string | null
+  account_deletion_scheduled_at?: string | null
+}
+
+/**
+ * Calculate days left from trial start date
+ */
+function calculateDaysLeft(trialStartedAt: string | null, trialEndsAt: string | null): { daysLeft: number; endsAt: Date | null } {
+  const now = new Date()
+  
+  // If we have explicit trial end date, use it
+  if (trialEndsAt) {
+    const endsAt = new Date(trialEndsAt)
+    const msLeft = endsAt.getTime() - now.getTime()
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+    return { daysLeft: Math.max(0, daysLeft), endsAt }
+  }
+  
+  // Calculate from start date
+  if (trialStartedAt) {
+    const startDate = new Date(trialStartedAt)
+    const endsAt = new Date(startDate.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)
+    const msLeft = endsAt.getTime() - now.getTime()
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+    return { daysLeft: Math.max(0, daysLeft), endsAt }
+  }
+  
+  // No dates available, return full trial
+  return { daysLeft: TRIAL_DURATION_DAYS, endsAt: null }
 }
 
 /**
@@ -40,15 +72,10 @@ interface SubscriptionRecord {
 export async function getTrialStatus(userId: string): Promise<TrialStatus> {
   const supabase = await createClient()
   
-  // Get subscription record (use any to bypass type checking since table may not be in generated types)
-  const { data: subscription } = await (supabase as any)
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', userId)
-    .single() as { data: SubscriptionRecord | null }
-
-  if (!subscription) {
-    // New user - no trial started yet
+  // First get the user's email from auth
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user?.email) {
     return {
       isActive: false,
       isPaid: false,
@@ -58,100 +85,87 @@ export async function getTrialStatus(userId: string): Promise<TrialStatus> {
       hasPaymentMethod: false,
     }
   }
+  
+  // Get subscription record by email
+  const { data: subscription } = await (supabase as any)
+    .from('subscriptions')
+    .select('*')
+    .eq('customer_email', user.email.toLowerCase())
+    .single() as { data: SubscriptionRecord | null }
 
-  // Check if paid subscription (not trialing)
-  if (subscription.status === 'active' && subscription.stripe_subscription_id) {
+  if (!subscription) {
+    // New user - no subscription yet, give them trial access
+    return {
+      isActive: true,  // Allow access initially
+      isPaid: false,
+      daysLeft: TRIAL_DURATION_DAYS,
+      trialEndsAt: null,
+      tier: 'trial',
+      hasPaymentMethod: false,
+    }
+  }
+
+  // Check subscription status
+  const hasActiveSubscription = !!subscription.dodo_subscription_id || !!subscription.dodo_customer_id
+  
+  // Calculate trial days based on stored dates
+  const { daysLeft, endsAt } = calculateDaysLeft(
+    subscription.trial_started_at || subscription.created_at,
+    subscription.trial_ends_at || null
+  )
+  
+  if (subscription.status === 'active') {
     return {
       isActive: true,
       isPaid: true,
       daysLeft: -1, // N/A for paid
       trialEndsAt: null,
       tier: subscription.tier as any,
-      pendingTier: subscription.pending_tier,
       hasPaymentMethod: true,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
     }
   }
 
-  // Check if subscription is trialing (Stripe trial)
-  if (subscription.status === 'trialing' && subscription.stripe_subscription_id) {
-    const now = new Date()
-    const trialEndsAt = subscription.trial_ends_at ? new Date(subscription.trial_ends_at) : null
-    
-    if (trialEndsAt) {
-      const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      
-      if (daysLeft <= 0) {
-        return {
-          isActive: false,
-          isPaid: false,
-          daysLeft: 0,
-          trialEndsAt,
-          tier: 'expired',
-          pendingTier: subscription.pending_tier || subscription.tier,
-          hasPaymentMethod: !!subscription.stripe_customer_id,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        }
-      }
-
-      return {
-        isActive: true,
-        isPaid: false,
-        daysLeft,
-        trialEndsAt,
-        tier: (subscription.tier as any) || 'trial',
-        pendingTier: subscription.pending_tier,
-        hasPaymentMethod: !!subscription.stripe_customer_id,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      }
-    }
-  }
-
-  // Check local trial status (pre-Stripe)
-  const now = new Date()
-  const trialEndsAt = subscription.trial_ends_at ? new Date(subscription.trial_ends_at) : null
-  
-  if (trialEndsAt) {
-    const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (daysLeft <= 0) {
-      // Trial expired
-      return {
-        isActive: false,
-        isPaid: false,
-        daysLeft: 0,
-        trialEndsAt,
-        tier: 'expired',
-        hasPaymentMethod: !!subscription.stripe_customer_id,
-      }
-    }
-
-    // Trial active
+  // Trialing status
+  if (subscription.status === 'trialing') {
     return {
-      isActive: true,
+      isActive: daysLeft > 0, // Only active if days remain
       isPaid: false,
       daysLeft,
-      trialEndsAt,
+      trialEndsAt: endsAt,
       tier: 'trial',
-      hasPaymentMethod: !!subscription.stripe_customer_id,
+      hasPaymentMethod: hasActiveSubscription,
     }
   }
 
-  // Cancelled subscription
-  if (subscription.status === 'cancelled') {
+  // Cancelled or expired
+  if (subscription.status === 'cancelled' || subscription.status === 'expired') {
     return {
       isActive: false,
       isPaid: false,
       daysLeft: 0,
       trialEndsAt: null,
       tier: 'expired',
-      hasPaymentMethod: !!subscription.stripe_customer_id,
+      hasPaymentMethod: hasActiveSubscription,
     }
   }
 
-  // No trial started
+  // Payment failed - NO ACCESS (they need to update payment method)
+  if (subscription.status === 'payment_failed') {
+    return {
+      isActive: false,
+      isPaid: false,
+      daysLeft: 0,
+      trialEndsAt: null,
+      tier: 'expired',
+      hasPaymentMethod: hasActiveSubscription,
+      paymentFailed: true,
+      gracePeriodEndsAt: subscription.grace_period_ends_at ? new Date(subscription.grace_period_ends_at) : null,
+    }
+  }
+
+  // Default - allow access
   return {
-    isActive: false,
+    isActive: true,
     isPaid: false,
     daysLeft: TRIAL_DURATION_DAYS,
     trialEndsAt: null,
@@ -166,20 +180,26 @@ export async function getTrialStatus(userId: string): Promise<TrialStatus> {
 export async function startTrial(userId: string): Promise<{ success: boolean; trialEndsAt: Date }> {
   const supabase = await createClient()
   
-  const trialEndsAt = new Date()
-  trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) {
+    return { success: false, trialEndsAt: new Date() }
+  }
+  
+  const now = new Date()
+  const trialEndsAt = new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
   const { error } = await (supabase as any)
     .from('subscriptions')
     .upsert({
-      user_id: userId,
+      customer_email: user.email.toLowerCase(),
       tier: 'trial',
       status: 'trialing',
+      trial_started_at: now.toISOString(),
       trial_ends_at: trialEndsAt.toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
     }, {
-      onConflict: 'user_id',
+      onConflict: 'customer_email',
     })
 
   if (error) {

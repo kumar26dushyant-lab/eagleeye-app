@@ -40,6 +40,115 @@ function getReactionCount(reactions: Array<{ name: string; count: number }> | un
 }
 
 // ============================================================================
+// SMART DEDUPLICATION - Thread collapse & duplicate detection
+// If Person A posts appreciation and 10 people reply with "congrats!", 
+// we only show the parent post, not all the replies
+// ============================================================================
+
+// Patterns that indicate a "me too" or congratulatory reply
+const CONGRATS_REPLY_PATTERNS = [
+  /^(congrats|congratulations|congradulations|well done|amazing|awesome|great|nice|woo|yay|🎉|🙌|👏|💪|🔥|❤️|💖|👍)+[\s!.,]*$/i,
+  /^(so happy for you|happy for you|proud of you|way to go|keep it up)+[\s!.,]*$/i,
+  /^(you deserve it|well deserved|you earned it)+[\s!.,]*$/i,
+  /^\+1[\s!.,]*$/i,
+  /^(same|ditto|agreed|this|^)+[\s!.,]*$/i,
+]
+
+function isCongratsReply(text: string): boolean {
+  const lower = text.toLowerCase().trim()
+  // Short messages (< 6 words) that match congrats patterns
+  const wordCount = lower.split(/\s+/).length
+  if (wordCount > 8) return false // Longer messages might have real content
+  
+  for (const pattern of CONGRATS_REPLY_PATTERNS) {
+    if (pattern.test(lower)) return true
+  }
+  
+  // Check for emoji-only replies
+  const emojiOnly = /^[\s\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u
+  if (emojiOnly.test(text.trim())) return true
+  
+  return false
+}
+
+// Deduplicate signals - collapse threads, remove duplicates
+function deduplicateSignals(signals: CommunicationSignal[]): CommunicationSignal[] {
+  const uniqueById = new Map<string, CommunicationSignal>()
+  const contentDedup = new Map<string, CommunicationSignal>()
+  const threadParents = new Map<string, CommunicationSignal>() // Track parent messages of threads
+  
+  // First pass: identify parent messages
+  for (const signal of signals) {
+    const metadata = signal.raw_metadata as { reply_count?: number; thread_ts?: string; parent_ts?: string }
+    
+    // If this has replies, it's a parent message - track it
+    if (metadata?.reply_count && metadata.reply_count > 0) {
+      threadParents.set(signal.source_message_id, signal)
+    }
+  }
+  
+  // Second pass: filter and deduplicate
+  for (const signal of signals) {
+    const metadata = signal.raw_metadata as { thread_ts?: string; parent_ts?: string }
+    const snippet = signal.snippet || ''
+    
+    // Create a truly unique key combining source and message ID
+    const uniqueKey = `${signal.source}:${signal.source_message_id}`
+    
+    // Skip if we've already seen this exact message
+    if (uniqueById.has(uniqueKey)) {
+      console.log(`[Dedup] Skipping exact duplicate ID: ${uniqueKey}`)
+      continue
+    }
+    
+    // Skip if this is a reply in a kudos/celebration thread and it's just a "congrats" reply
+    if (metadata?.thread_ts || metadata?.parent_ts) {
+      const parentTs = metadata.thread_ts || metadata.parent_ts
+      const parent = threadParents.get(parentTs || '')
+      
+      if (parent && (parent.signal_type === 'kudos' || parent.signal_type === 'celebration')) {
+        if (isCongratsReply(snippet)) {
+          console.log(`[Dedup] Skipping congrats reply: "${snippet.slice(0, 50)}"`)
+          continue // Skip this reply, we already have the parent
+        }
+      }
+    }
+    
+    // Content-based deduplication: same content within 5 minutes = duplicate
+    const contentKey = `${signal.channel_id || 'nochannel'}:${normalizeForDedup(snippet)}`
+    const existing = contentDedup.get(contentKey)
+    
+    if (existing) {
+      const existingTime = new Date(existing.timestamp).getTime()
+      const currentTime = new Date(signal.timestamp).getTime()
+      const timeDiff = Math.abs(currentTime - existingTime)
+      
+      // If same content within 5 minutes, skip
+      if (timeDiff < 5 * 60 * 1000) {
+        console.log(`[Dedup] Skipping content duplicate: "${snippet.slice(0, 50)}"`)
+        continue
+      }
+    }
+    
+    // Add to our tracking maps
+    uniqueById.set(uniqueKey, signal)
+    contentDedup.set(contentKey, signal)
+  }
+  
+  return Array.from(uniqueById.values())
+}
+
+// Normalize text for deduplication comparison
+function normalizeForDedup(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')     // Normalize whitespace
+    .trim()
+    .slice(0, 100)            // Compare first 100 chars
+}
+
+// ============================================================================
 // NOISE FILTERING - EagleEye's Core USP
 // We ONLY surface actionable signals, not chit-chat
 // ============================================================================
@@ -94,6 +203,41 @@ function classifySlackMessage(text: string, botUserId: string): { signalType: Si
   const lower = text.toLowerCase()
   
   // ============================================================================
+  // CRITICAL/URGENT SIGNALS FIRST - Check these before anything else!
+  // ============================================================================
+  
+  // Blockers - someone is stuck (check first!)
+  if (lower.includes('blocked') || lower.includes('stuck') || lower.includes("can't proceed") || lower.includes('cannot proceed')) {
+    return { signalType: 'blocker', confidence: 0.95 }
+  }
+  
+  // Escalations - urgent matters
+  if (lower.includes('urgent') || lower.includes('asap') || lower.includes('immediately') || lower.includes('critical') || lower.includes('p0') || lower.includes('p1') || lower.includes('emergency')) {
+    return { signalType: 'escalation', confidence: 0.95 }
+  }
+  
+  // "Big issue" / "major problem" patterns = urgent (check early!)
+  if ((lower.includes('big') || lower.includes('major') || lower.includes('serious') || lower.includes('significant')) && 
+      (lower.includes('issue') || lower.includes('problem') || lower.includes('bug') || lower.includes('error'))) {
+    return { signalType: 'urgent', confidence: 0.9 }
+  }
+  
+  // "Otherwise" with negative outcome = urgent
+  if (lower.includes('otherwise') && (lower.includes('issue') || lower.includes('problem') || lower.includes('fail') || lower.includes('break') || lower.includes('bad'))) {
+    return { signalType: 'urgent', confidence: 0.85 }
+  }
+  
+  // "Today" with action words = urgent
+  if (lower.includes('today') && (lower.includes('need to') || lower.includes('deploy') || lower.includes('release') || lower.includes('fix') || lower.includes('ship') || lower.includes('must') || lower.includes('have to'))) {
+    return { signalType: 'urgent', confidence: 0.85 }
+  }
+  
+  // Decisions needed
+  if (lower.includes('approve') || lower.includes('sign off') || lower.includes('decision needed') || lower.includes('need your input') || lower.includes('need approval')) {
+    return { signalType: 'decision_needed', confidence: 0.85 }
+  }
+  
+  // ============================================================================
   // POSITIVE SIGNALS - Surface appreciation and wins!
   // ============================================================================
   
@@ -107,11 +251,19 @@ function classifySlackMessage(text: string, botUserId: string): { signalType: Si
     /\bthank\s+you\s+@/i, // thanking someone specifically
     /🎉.*(@|team|everyone|all)/i, // celebration with mention
     /🙏\s*(@|\w+)/i, // prayer hands thanking someone
+    // NEW: Recognition patterns
+    /\b(recognize|recognise|recognizing)\s+\w+/i, // "recognize Sam"
+    /\bcontributed\s+(a lot|greatly|significantly)/i, // "contributed a lot"
+    /\b(keep going|keep it up|keep up the (good |great )?work)/i, // encouragement
+    /\b(proud of|impressed by|impressed with)\s+/i,
+    /\b(shout out|big thanks|special thanks)\s+(to|for)/i,
+    /\b(stellar|superb|brilliant|exceptional)\s+(work|job|effort|performance)/i,
+    /\b(you'?re|you are)\s+(amazing|awesome|the best|fantastic)/i,
   ]
   
   for (const pattern of kudosPatterns) {
     if (pattern.test(text)) {
-      return { signalType: 'kudos', confidence: 0.85 }
+      return { signalType: 'kudos', confidence: 0.9 }
     }
   }
   
@@ -148,26 +300,7 @@ function classifySlackMessage(text: string, botUserId: string): { signalType: Si
   }
   
   // ============================================================================
-  // HIGH CONFIDENCE: Clear actionable signals
-  // ============================================================================
-  
-  // Blockers - someone is stuck
-  if (lower.includes('blocked') || lower.includes('stuck') || lower.includes("can't proceed") || lower.includes('cannot proceed')) {
-    return { signalType: 'blocker', confidence: 0.9 }
-  }
-  
-  // Decisions needed
-  if (lower.includes('approve') || lower.includes('sign off') || lower.includes('decision needed') || lower.includes('need your input') || lower.includes('need approval')) {
-    return { signalType: 'decision_needed', confidence: 0.85 }
-  }
-  
-  // Escalations - urgent matters
-  if (lower.includes('urgent') || lower.includes('asap') || lower.includes('immediately') || lower.includes('critical') || lower.includes('p0') || lower.includes('p1') || lower.includes('emergency')) {
-    return { signalType: 'escalation', confidence: 0.9 }
-  }
-  
-  // ============================================================================
-  // MEDIUM CONFIDENCE
+  // MEDIUM CONFIDENCE - Contextual signals
   // ============================================================================
   
   // Direct mentions with actionable content
@@ -194,9 +327,9 @@ function classifySlackMessage(text: string, botUserId: string): { signalType: Si
     }
   }
   
-  // Deadlines / Urgency
-  if (lower.includes('deadline') || lower.includes('due') || lower.includes('by eod') || lower.includes('by end of') || lower.includes('by friday') || lower.includes('by monday') || lower.includes('due today') || lower.includes('due tomorrow')) {
-    return { signalType: 'urgent', confidence: 0.75 }
+  // Deadlines with specific dates
+  if (lower.includes('deadline') || lower.includes('by eod') || lower.includes('by end of') || lower.includes('by friday') || lower.includes('by monday') || lower.includes('due today') || lower.includes('due tomorrow')) {
+    return { signalType: 'urgent', confidence: 0.85 }
   }
   
   // Review requests - need attention
@@ -290,6 +423,9 @@ async function getLinearToken(userId: string, supabase: SupabaseClient): Promise
 async function fetchSlackSignals(client: WebClient, timeWindow: TimeWindow): Promise<CommunicationSignal[]> {
   const signals: CommunicationSignal[] = []
   const oldest = (timeWindow.start.getTime() / 1000).toString()
+  const latest = (timeWindow.end.getTime() / 1000).toString() // Also filter by end time!
+  
+  console.log(`[Slack] Time window: ${timeWindow.start.toISOString()} to ${timeWindow.end.toISOString()}`)
   
   try {
     // Get list of public channels the bot can see
@@ -317,10 +453,11 @@ async function fetchSlackSignals(client: WebClient, timeWindow: TimeWindow): Pro
       if (!channel.id) continue
 
       try {
-        console.log(`[Slack] Fetching messages from #${channel.name} since ${new Date(timeWindow.start).toISOString()}`)
+        console.log(`[Slack] Fetching messages from #${channel.name} (${new Date(timeWindow.start).toISOString()} to ${new Date(timeWindow.end).toISOString()})`)
         const historyResult = await client.conversations.history({
           channel: channel.id,
           oldest, // Only fetch messages since time window start
+          latest, // Only fetch messages until time window end
           limit: 100, // More messages since we're filtering by time
         })
 
@@ -497,12 +634,47 @@ async function fetchAsanaSignals(token: string, timeWindow: TimeWindow): Promise
     }
     
     for (const task of tasks) {
+      // Filter by time window end - skip tasks modified after our window
+      const taskModifiedAt = new Date(task.modified_at || task.created_at)
+      if (taskModifiedAt > timeWindow.end) {
+        console.log(`[Asana] Skipping task modified after window: ${task.name}`)
+        continue
+      }
+      
       // Determine signal type based on task properties
       let signalType: SignalType = 'fyi'
       let confidence = 0.6
       
+      // Check task name/notes for urgent keywords FIRST (highest priority)
+      const taskText = `${task.name} ${task.notes || ''}`.toLowerCase()
+      
+      // URGENT patterns - check these first!
+      if (taskText.includes('urgent') || taskText.includes('asap') || taskText.includes('critical') || 
+          taskText.includes('breaking') || taskText.includes('emergency') || taskText.includes('p0') || taskText.includes('p1')) {
+        signalType = 'urgent'
+        confidence = 0.95
+      }
+      // BLOCKER patterns
+      else if (taskText.includes('blocked') || taskText.includes('blocker') || taskText.includes('stuck') || 
+               taskText.includes("can't proceed") || taskText.includes('cannot proceed')) {
+        signalType = 'blocker'
+        confidence = 0.95
+      }
+      // NEEDS ATTENTION patterns
+      else if (taskText.includes('need attention') || taskText.includes('needs attention') || 
+               taskText.includes('action required') || taskText.includes('please review') ||
+               taskText.includes('waiting on') || taskText.includes('help needed')) {
+        signalType = 'decision_needed'
+        confidence = 0.9
+      }
+      // POSITIVE patterns - appreciation/celebration
+      else if (taskText.includes('celebrate') || taskText.includes('congrats') || taskText.includes('kudos') || 
+               taskText.includes('great work') || taskText.includes('well done') || taskText.includes('thank')) {
+        signalType = 'celebration'
+        confidence = 0.85
+      }
       // Check for appreciation - task was liked
-      if (task.liked || task.num_likes > 0) {
+      else if (task.liked || task.num_likes > 0) {
         signalType = 'kudos'
         confidence = 0.85
       }
@@ -527,13 +699,6 @@ async function fetchAsanaSignals(token: string, timeWindow: TimeWindow): Promise
           signalType = 'decision_needed' // Due soon
           confidence = 0.7
         }
-      }
-      
-      // Check task name/notes for positive patterns
-      const taskText = `${task.name} ${task.notes || ''}`.toLowerCase()
-      if (taskText.includes('celebrate') || taskText.includes('congrats') || taskText.includes('kudos') || taskText.includes('great work')) {
-        signalType = 'celebration'
-        confidence = 0.8
       }
       
       // Check for subtasks - more complex work
@@ -588,6 +753,9 @@ async function fetchLinearSignals(token: string, timeWindow: TimeWindow): Promis
   
   try {
     const modifiedSince = timeWindow.start.toISOString()
+    const modifiedUntil = timeWindow.end.toISOString()
+    
+    console.log(`[Linear] Time window: ${modifiedSince} to ${modifiedUntil}`)
     
     const res = await fetch(LINEAR_API, {
       method: 'POST',
@@ -600,7 +768,12 @@ async function fetchLinearSignals(token: string, timeWindow: TimeWindow): Promis
           query {
             viewer {
               assignedIssues(
-                filter: { updatedAt: { gte: "${modifiedSince}" } }
+                filter: { 
+                  updatedAt: { 
+                    gte: "${modifiedSince}",
+                    lte: "${modifiedUntil}"
+                  } 
+                }
                 first: 50
               ) {
                 nodes {
@@ -968,11 +1141,110 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter by mode
-    const filteredSignals = filterSignalsByMode(allSignals, mode)
+    // =========================================================================
+    // FETCH WHATSAPP SIGNALS FROM DATABASE
+    // Unlike Slack/Asana/Linear which we poll, WhatsApp comes via webhooks
+    // =========================================================================
+    if (user && connectedTools.includes('whatsapp')) {
+      try {
+        console.log('[WhatsApp] Fetching signals from database')
+        
+        const { data: whatsappSignals, error: waError } = await supabase
+          .from('communication_signals')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('source', 'whatsapp')
+          .gte('timestamp', timeWindow.start.toISOString())
+          .lte('timestamp', timeWindow.end.toISOString())
+          .order('timestamp', { ascending: false })
+        
+        if (waError) {
+          console.error('[WhatsApp] DB error:', waError)
+          debugInfo.whatsappError = waError.message
+        } else if (whatsappSignals && whatsappSignals.length > 0) {
+          // Filter out greeting/casual messages that slipped through before filtering was added
+          const GREETING_PATTERNS = [
+            /^(hi|hello|hey|hii+|hola|howdy)[\s!,\.]*$/i,
+            /^(how are you|how r u|how're you|wassup|whats up|what's up)[\s!?]*$/i,
+            /^(good morning|good afternoon|good evening|good night|gm|gn)[\s!]*$/i,
+            /^(thanks|thank you|thx|ty)[\s!]*$/i,
+            /^(ok|okay|k|kk|alright|sure|yes|no|yep|nope|yeah|yea|nah)[\s!]*$/i,
+            /^(bye|goodbye|see you|ttyl|later)[\s!]*$/i,
+          ]
+          
+          const filteredSignals = whatsappSignals.filter(wa => {
+            const waAny = wa as Record<string, any>
+            const snippet = (waAny.snippet || waAny.content_preview || '').toLowerCase().trim()
+            // Skip if matches greeting pattern
+            for (const pattern of GREETING_PATTERNS) {
+              if (pattern.test(snippet)) {
+                console.log(`[WhatsApp] Filtering out greeting: "${snippet}"`)
+                return false
+              }
+            }
+            return true
+          })
+          
+          console.log(`[WhatsApp] Found ${whatsappSignals.length} signals, kept ${filteredSignals.length} after filtering`)
+          debugInfo.whatsappSignalsCount = filteredSignals.length
+          
+          for (const wa of filteredSignals) {
+            // Map database fields to CommunicationSignal type
+            const waRecord = wa as Record<string, any>
+            allSignals.push({
+              id: waRecord.id,
+              user_id: waRecord.user_id,
+              source: 'whatsapp' as any,
+              source_message_id: waRecord.source_message_id || waRecord.message_id || waRecord.id,
+              channel_id: waRecord.channel_id || 'dm',
+              channel_name: waRecord.channel_name || 'WhatsApp DM',
+              sender_name: waRecord.sender_name,
+              signal_type: waRecord.signal_type as any,
+              snippet: waRecord.snippet || waRecord.content_preview,
+              timestamp: waRecord.timestamp || waRecord.created_at,
+              is_read: waRecord.is_read ?? false,
+              is_actioned: waRecord.is_actioned ?? false,
+              raw_metadata: waRecord.raw_metadata || waRecord.raw_data,
+              created_at: waRecord.created_at,
+            })
+          }
+        } else {
+          console.log('[WhatsApp] No signals found in database for time window')
+          debugInfo.whatsappSignalsCount = 0
+        }
+      } catch (waError) {
+        console.error('[WhatsApp] Failed to fetch signals:', waError)
+        debugInfo.whatsappError = waError instanceof Error ? waError.message : 'Unknown error'
+      }
+    }
+
+    // =========================================================================
+    // SMART DEDUPLICATION - Remove noise, collapse threads, detect duplicates
+    // =========================================================================
+    console.log(`[Dedup] Before: ${allSignals.length} signals`)
+    const dedupedSignals = deduplicateSignals(allSignals)
+    console.log(`[Dedup] After: ${dedupedSignals.length} signals (removed ${allSignals.length - dedupedSignals.length})`)
+    debugInfo.deduplication = {
+      before: allSignals.length,
+      after: dedupedSignals.length,
+      removed: allSignals.length - dedupedSignals.length
+    }
+
+    // Categorize signals instead of mode filtering
+    // Categories: needs_attention, kudos_wins, fyi
+    const needsAttentionTypes = ['blocker', 'escalation', 'urgent', 'decision_needed']
+    const kudosWinsTypes = ['kudos', 'celebration', 'milestone']
+    const fyiTypes = ['fyi', 'mention', 'question']
     
-    // Generate brief with time context
-    const briefText = generateBriefFromSignals(filteredSignals, mode, timeWindow)
+    const needsAttention = dedupedSignals.filter(s => s.signal_type && needsAttentionTypes.includes(s.signal_type))
+    const kudosWins = dedupedSignals.filter(s => s.signal_type && kudosWinsTypes.includes(s.signal_type))
+    const fyiSignals = dedupedSignals.filter(s => s.signal_type && fyiTypes.includes(s.signal_type))
+    
+    // All signals sorted by importance (urgent first, then kudos, then fyi)
+    const sortedSignals = [...needsAttention, ...kudosWins, ...fyiSignals]
+    
+    // Generate brief with all signals (not mode filtered)
+    const briefText = generateBriefFromSignals(allSignals, mode, timeWindow)
 
     // For now, work items come from PM tools (not yet implemented)
     // TODO: Fetch from Asana/Linear when connected
@@ -981,10 +1253,33 @@ export async function GET(request: NextRequest) {
     // Get empty state message if no signals
     const emptyState = allSignals.length === 0 ? interpretEmptyResults(timeWindow) : null
 
+    // ========================================================================
+    // WORKSPACE TYPE DETECTION (lightweight - auto-detect from connected tools)
+    // This helps frontend display contextually relevant labels
+    // ========================================================================
+    type WorkspaceType = 'smb' | 'enterprise' | 'tech' | 'hybrid'
+    let workspaceType: WorkspaceType = 'hybrid'
+    
+    const hasWhatsApp = connectedTools.includes('whatsapp')
+    const hasSlack = connectedTools.includes('slack')
+    const hasTeams = connectedTools.includes('teams')
+    const hasPMTools = connectedTools.some(t => ['linear', 'jira', 'github', 'asana'].includes(t))
+    
+    if (hasWhatsApp && !hasSlack && !hasTeams) {
+      workspaceType = 'smb' // WhatsApp-only = SMB/retail
+    } else if ((hasSlack || hasTeams) && hasPMTools) {
+      workspaceType = 'tech' // Slack/Teams + PM tools = tech team
+    } else if ((hasSlack || hasTeams) && !hasWhatsApp) {
+      workspaceType = 'enterprise' // Just Slack/Teams = enterprise
+    } else {
+      workspaceType = 'hybrid' // Mix of everything
+    }
+
     return NextResponse.json({
-      mode,
+      mode, // Keep for backwards compatibility but not used for filtering
       dataSource,
       connectedTools,
+      workspaceType, // NEW: helps frontend customize labels
       timeWindow: {
         start: timeWindow.start.toISOString(),
         end: timeWindow.end.toISOString(),
@@ -995,20 +1290,28 @@ export async function GET(request: NextRequest) {
       },
       brief: {
         brief_text: briefText,
-        needs_attention: workItems.filter(w => w.urgency === 'high'),
-        fyi_items: workItems.filter(w => w.urgency === 'medium'),
+        needs_attention: needsAttention, // Now returns actual signals!
+        kudos_wins: kudosWins,           // New category
+        fyi_items: fyiSignals,           // Updated
         handled_items: workItems.filter(w => w.status === 'done'),
         coverage_percentage: 100,
         total_items_processed: allSignals.length,
-        items_surfaced: filteredSignals.length,
+        items_surfaced: sortedSignals.length,
       },
-      signals: filteredSignals.slice(0, 50), // Limit to 50 signals
+      signals: sortedSignals.slice(0, 50), // Limit to 50 signals
+      // Categorized signals for easier UI rendering
+      categories: {
+        needs_attention: needsAttention,
+        kudos_wins: kudosWins,
+        fyi: fyiSignals,
+      },
       emptyState,
       stats: {
-        needsAttention: filteredSignals.filter(s => s.signal_type && ['blocker', 'decision_needed', 'mention'].includes(s.signal_type)).length,
-        fyi: filteredSignals.filter(s => s.signal_type === 'fyi' || s.signal_type === 'question').length,
+        needsAttention: needsAttention.length,
+        kudosWins: kudosWins.length,
+        fyi: fyiSignals.length,
         handled: 0,
-        signals: filteredSignals.length,
+        signals: sortedSignals.length,
         totalItems: workItems.length,
         totalSignals: allSignals.length,
       },

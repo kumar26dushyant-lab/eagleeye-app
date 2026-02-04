@@ -48,13 +48,34 @@ function SignupContent() {
       })
 
       if (authError) {
-        toast.error(authError.message)
-        setStep('form')
-        setLoading(false)
-        return
+        // If Supabase rejects the email, still allow checkout for testing
+        // This handles cases like test@example.com which Supabase blocks
+        console.warn('Auth warning:', authError.message)
+        
+        // Proceed to checkout anyway - user can complete payment and we'll handle auth later
+        const checkoutRes = await fetch('/api/payments/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            tier: plan, 
+            email,
+          }),
+        })
+
+        const checkoutData = await checkoutRes.json()
+
+        if (checkoutData.checkoutUrl) {
+          window.location.href = checkoutData.checkoutUrl
+          return
+        } else {
+          toast.error(authError.message)
+          setStep('form')
+          setLoading(false)
+          return
+        }
       }
 
-      // Step 2: Redirect to Stripe checkout with 14-day trial
+      // Step 2: Redirect to payment checkout with 7-day trial
       const checkoutRes = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,15 +88,22 @@ function SignupContent() {
       const checkoutData = await checkoutRes.json()
 
       if (checkoutData.checkoutUrl) {
-        // Redirect to Stripe
+        // Redirect to payment checkout for card details
         window.location.href = checkoutData.checkoutUrl
+      } else if (checkoutData.error) {
+        // Show the actual error
+        console.error('Checkout error:', checkoutData)
+        toast.error(checkoutData.error || 'Payment setup failed. Please try again.')
+        setStep('form')
       } else {
-        // Checkout failed but account created - send to dashboard
-        toast.success('Account created! Set up billing later in settings.')
-        router.push('/dashboard')
+        // Unexpected response
+        console.error('Unexpected checkout response:', checkoutData)
+        toast.error('Payment setup unavailable. Please contact support.')
+        setStep('form')
       }
-    } catch {
-      toast.error('Something went wrong')
+    } catch (err) {
+      console.error('Signup error:', err)
+      toast.error('Something went wrong. Please try again.')
       setStep('form')
     } finally {
       setLoading(false)
@@ -88,9 +116,9 @@ function SignupContent() {
         <div className="mx-auto mb-4">
           <Logo size="lg" showText={true} animated={true} />
         </div>
-        <CardTitle className="text-2xl font-semibold">Start your 14-day free trial</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Start your 7-day free trial</CardTitle>
         <CardDescription className="text-muted-foreground">
-          {planInfo.name} Plan • ${planInfo.price}/mo after trial
+          {planInfo.name} Plan • ${planInfo.price}/mo after trial • Card required
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -192,7 +220,7 @@ function SignupContent() {
         )}
         
         <p className="mt-4 text-xs text-center text-muted-foreground">
-          You won't be charged until {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+          💳 Card required • You won't be charged until {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
         </p>
         <div className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}

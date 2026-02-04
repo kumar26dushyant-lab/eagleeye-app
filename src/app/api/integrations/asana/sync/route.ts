@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { processWorkItemNotifications } from '@/lib/notifications/triggers'
 import { 
   getWorkspaces,
   getMyTasks,
@@ -57,11 +58,29 @@ export async function POST(request: Request) {
     const highUrgency = workItems.filter(i => i.urgency === 'high').length
     const blockedCount = workItems.filter(i => i.is_blocked).length
 
+    // Trigger realtime notifications for blockers and overdue tasks
+    let notificationsTriggered = { blockers: 0, overdue: 0 }
+    try {
+      notificationsTriggered = await processWorkItemNotifications(
+        user.id,
+        workItems.map(w => ({
+          id: w.id || '',
+          title: w.title,
+          is_blocked: w.is_blocked,
+          due_date: w.due_date || undefined,
+          url: w.url || undefined,
+        }))
+      )
+    } catch (notifError) {
+      console.error('[Asana Sync] Notification error:', notifError)
+    }
+
     return NextResponse.json({
       success: true,
       workspacesSynced: workspaces.length,
       tasksFound: allTasks.length,
       workItemsCreated: workItems.length,
+      notificationsTriggered,
       stats: {
         surfaced: surfacedCount,
         highUrgency,

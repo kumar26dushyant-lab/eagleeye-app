@@ -1,7 +1,7 @@
 // Unified Integration Layer (UIL) - Core Types
 // All integrations normalize to this shape
 
-export type IntegrationSource = 'slack' | 'asana' | 'linear' | 'clickup' | 'jira' | 'notion' | 'github' | 'teams'
+export type IntegrationSource = 'slack' | 'asana' | 'linear' | 'clickup' | 'jira' | 'notion' | 'github' | 'teams' | 'whatsapp'
 
 export type SignalCategory = 
   | 'commitment'      // Someone committed to do something

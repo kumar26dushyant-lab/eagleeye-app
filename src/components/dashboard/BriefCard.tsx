@@ -1,10 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Calendar, AlertTriangle, MessageSquare, TrendingUp, CheckCircle2 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import type { IntentMode } from '@/lib/importance'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface BriefStats {
   needsAttention: number
@@ -17,17 +14,10 @@ interface BriefStats {
 
 interface BriefCardProps {
   stats: BriefStats | null
-  mode: IntentMode
   isLoading?: boolean
 }
 
-export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
-  const today = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric' 
-  })
-
+export function BriefCard({ stats, isLoading }: BriefCardProps) {
   if (isLoading) {
     return (
       <Card className="bg-card border-border">
@@ -52,22 +42,18 @@ export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
     )
   }
 
-  // Mode-specific messaging
-  const getModeMessage = () => {
-    switch (mode) {
-      case 'calm':
-        return stats.needsAttention === 0 
-          ? "All clear! Nothing critical needs your attention right now."
-          : `${stats.needsAttention} critical item${stats.needsAttention > 1 ? 's' : ''} need${stats.needsAttention === 1 ? 's' : ''} your attention.`
-      case 'on_the_go':
-        return `Quick overview: ${stats.needsAttention} action items, ${stats.signals} messages waiting.`
-      case 'work':
-        return `Ready for work. ${stats.needsAttention + stats.fyi} items to review, ${stats.signals} conversations to catch up on.`
-      case 'focus':
-        return `Deep dive mode. Full visibility across ${stats.totalItems} tracked items.`
-      default:
-        return ''
+  // Status-based messaging
+  const getStatusMessage = () => {
+    if (stats.needsAttention === 0 && stats.signals === 0) {
+      return "🎯 All clear! Nothing needs your attention right now."
     }
+    if (stats.needsAttention === 0) {
+      return `✨ No fires! ${stats.signals} messages across your workspace.`
+    }
+    if (stats.needsAttention === 1) {
+      return `👀 1 item needs your attention, ${stats.fyi} FYI items to review.`
+    }
+    return `🔥 ${stats.needsAttention} items need attention, ${stats.fyi} FYI items.`
   }
 
   return (
@@ -78,15 +64,10 @@ export function BriefCard({ stats, mode, isLoading }: BriefCardProps) {
     >
       <Card className="bg-gradient-to-br from-card to-muted/20 border-border overflow-hidden">
         <CardContent className="p-4 space-y-3">
-          {/* Mode Badge & Message */}
-          <div className="space-y-2">
-            <Badge variant="outline" className="capitalize">
-              {mode.replace('_', ' ')} mode
-            </Badge>
-            <p className="text-sm text-foreground">
-              {getModeMessage()}
-            </p>
-          </div>
+          {/* Status Message */}
+          <p className="text-sm text-foreground">
+            {getStatusMessage()}
+          </p>
 
           {/* Coverage Bar */}
           <div className="space-y-1">

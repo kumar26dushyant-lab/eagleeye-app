@@ -10,7 +10,7 @@ import { z } from 'zod'
 export const IntentModeSchema = z.enum(['calm', 'on_the_go', 'work', 'focus'])
 export type IntentMode = z.infer<typeof IntentModeSchema>
 
-export const IntegrationProviderSchema = z.enum(['asana', 'clickup', 'jira', 'slack', 'teams'])
+export const IntegrationProviderSchema = z.enum(['asana', 'clickup', 'jira', 'slack', 'teams', 'whatsapp'])
 export type IntegrationProvider = z.infer<typeof IntegrationProviderSchema>
 
 export const UrgencyLevelSchema = z.enum(['high', 'medium', 'low'])

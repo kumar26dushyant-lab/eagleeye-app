@@ -69,6 +69,29 @@ async function getLinearToken(supabase: Awaited<ReturnType<typeof createClient>>
   return process.env.LINEAR_API_KEY || null
 }
 
+async function getWhatsAppStatus(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (user) {
+    const { data: integration } = await supabase
+      .from('integrations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('provider', 'whatsapp' as any)
+      .single()
+    
+    if (integration) {
+      return {
+        connected: true,
+        phoneNumber: integration.workspace_id || undefined,
+        accountName: integration.workspace_name || undefined,
+      }
+    }
+  }
+  
+  return { connected: false }
+}
+
 export async function GET() {
   const supabase = await createClient()
 
@@ -89,10 +112,17 @@ export async function GET() {
     }
     asana: { connected: boolean }
     linear: { connected: boolean }
+    whatsapp: { 
+      connected: boolean
+      phoneNumber?: string
+      accountName?: string
+      connectedAt?: string
+    }
   } = {
     slack: { connected: false },
     asana: { connected: false },
     linear: { connected: false },
+    whatsapp: { connected: false },
   }
 
   // Check Asana
@@ -102,6 +132,9 @@ export async function GET() {
   // Check Linear
   const linearToken = await getLinearToken(supabase)
   result.linear = { connected: !!linearToken }
+
+  // Check WhatsApp
+  result.whatsapp = await getWhatsAppStatus(supabase)
 
   // Check Slack
   try {

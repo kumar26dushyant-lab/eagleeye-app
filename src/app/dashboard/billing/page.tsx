@@ -18,38 +18,41 @@ interface TrialStatus {
   trialEndsAt?: string
   cancelAtPeriodEnd?: boolean
   hasPaymentMethod?: boolean
+  // Payment failure fields
+  paymentFailed?: boolean
+  gracePeriodEndsAt?: string | null
 }
 
 const TIER_INFO: Record<string, { name: string; price: string; color: string; features: string[] }> = {
   expired: {
-    name: 'Trial Expired',
-    price: 'No active plan',
-    color: 'text-red-500',
-    features: ['Subscribe to continue using EagleEye'],
+    name: 'No Active Plan',
+    price: 'Start your free trial',
+    color: 'text-muted-foreground',
+    features: ['7-day free trial available', 'Card required, cancel anytime', 'Full access during trial'],
   },
   trial: {
-    name: '14-Day Trial',
-    price: 'Free until trial ends',
+    name: 'Free Trial',
+    price: '7 days free',
     color: 'text-green-500',
-    features: ['Full access to all features', 'Card on file, charged after Day 14'],
+    features: ['Full access to all features', 'Connect unlimited integrations', 'AI-powered insights'],
   },
   founder: {
-    name: 'Founder',
-    price: '$29/mo',
+    name: 'Solo',
+    price: '$29/month',
     color: 'text-blue-500',
-    features: ['Unlimited integrations', 'AI insights', 'All notifications'],
+    features: ['Unlimited integrations', 'AI daily briefs', '90-day signal history', 'Email support'],
   },
   team: {
     name: 'Team',
-    price: '$79/mo',
+    price: '$79/month',
     color: 'text-purple-500',
-    features: ['Everything in Founder', '10 team members', 'Team dashboard'],
+    features: ['Everything in Solo', 'Up to 10 team members', 'Team dashboard & analytics', '1-year history'],
   },
   enterprise: {
     name: 'Enterprise',
-    price: 'Custom',
+    price: 'Custom pricing',
     color: 'text-orange-500',
-    features: ['Everything in Team', 'Unlimited members', 'SSO/SAML'],
+    features: ['Everything in Team', 'Unlimited team members', 'SSO/SAML authentication', 'SLA available'],
   },
 }
 
@@ -183,7 +186,15 @@ function BillingContent() {
       if (data.success) {
         toast.success(data.message)
         setShowCancelConfirm(false)
-        loadTrialStatus() // Refresh status
+        
+        // If server says to logout, sign out and redirect
+        if (data.shouldLogout) {
+          const supabase = (await import('@/lib/supabase/client')).createClient()
+          await supabase.auth.signOut()
+          window.location.href = '/?cancelled=true'
+        } else {
+          loadTrialStatus() // Refresh status
+        }
       } else {
         toast.error(data.error || 'Failed to cancel subscription')
       }
@@ -224,30 +235,76 @@ function BillingContent() {
         </p>
       </motion.div>
 
-      {/* Trial Banner */}
+      {/* Trial Countdown Banner */}
       {currentTier === 'trial' && trialStatus && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`p-4 rounded-lg border flex items-center justify-between ${
-            trialStatus.daysLeft <= 3 
-              ? 'bg-red-500/10 border-red-500/30 text-red-400' 
-              : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+          className={`p-6 rounded-xl border-2 ${
+            trialStatus.daysLeft <= 2 
+              ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40' 
+              : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/40'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5" />
-            <div>
-              <span className="font-medium block">
-                {trialStatus.daysLeft === 1 
-                  ? 'Your trial ends tomorrow!' 
-                  : `${trialStatus.daysLeft} days left in your free trial`}
-              </span>
-              <span className="text-xs opacity-80">
-                Your card will be charged when the trial ends. You can change plans or cancel anytime.
-              </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`relative flex items-center justify-center w-16 h-16 rounded-full ${
+                trialStatus.daysLeft <= 2 
+                  ? 'bg-red-500/20 text-red-400' 
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                <span className="text-2xl font-bold">{trialStatus.daysLeft}</span>
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeDasharray={`${(trialStatus.daysLeft / 7) * 100}, 100`}
+                    strokeLinecap="round"
+                    className="opacity-60"
+                  />
+                </svg>
+              </div>
+              <div>
+                <span className={`font-semibold text-lg block ${
+                  trialStatus.daysLeft <= 2 ? 'text-red-400' : 'text-foreground'
+                }`}>
+                  {trialStatus.daysLeft === 0 
+                    ? 'Trial ends today!' 
+                    : trialStatus.daysLeft === 1 
+                      ? 'Trial ends tomorrow!' 
+                      : `${trialStatus.daysLeft} days remaining`}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  Your 7-day free trial • Auto-renews to Solo plan at $29/month
+                </span>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              {[...Array(7)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-8 rounded-full transition-all ${
+                    i < (7 - trialStatus.daysLeft)
+                      ? 'bg-muted-foreground/30'
+                      : trialStatus.daysLeft <= 2
+                        ? 'bg-red-500'
+                        : 'bg-blue-500'
+                  }`}
+                />
+              ))}
             </div>
           </div>
+          {trialStatus.trialEndsAt && (
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
+              Trial started on {new Date(new Date(trialStatus.trialEndsAt).getTime() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString()} • 
+              Ends on {new Date(trialStatus.trialEndsAt).toLocaleDateString()} • 
+              Cancel anytime before to avoid charges
+            </p>
+          )}
         </motion.div>
       )}
 
@@ -268,6 +325,71 @@ function BillingContent() {
                   : 'the billing period end'}. 
                 You can reactivate anytime before then.
               </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Payment Failed Banner */}
+      {trialStatus?.paymentFailed && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-xl border-2 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40"
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-400 text-lg">Payment Failed</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                We couldn't process your payment. Please update your payment method to restore access.
+              </p>
+              {trialStatus.gracePeriodEndsAt && (
+                <div className="mt-3 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                  <p className="text-sm text-red-300">
+                    <strong>Account will be deleted on:</strong>{' '}
+                    {new Date(trialStatus.gracePeriodEndsAt).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+              )}
+              <div className="mt-4">
+                <Button 
+                  className="bg-red-500 hover:bg-red-600"
+                  onClick={async () => {
+                    // Create checkout session for reactivation (no trial)
+                    try {
+                      const res = await fetch('/api/payments/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          tier: 'founder',
+                          reactivation: true // Flag to skip trial
+                        }),
+                      })
+                      const data = await res.json()
+                      if (data.checkoutUrl) {
+                        window.location.href = data.checkoutUrl
+                      } else if (data.checkout_url) {
+                        window.location.href = data.checkout_url
+                      } else if (data.error) {
+                        toast.error(data.error)
+                      } else {
+                        toast.error('Unable to create checkout session')
+                      }
+                    } catch (error) {
+                      toast.error('Failed to start checkout')
+                    }
+                  }}
+                >
+                  Update Payment Method
+                </Button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -333,23 +455,130 @@ function BillingContent() {
       >
         {trialStatus?.isPaid ? (
           <>
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={openCustomerPortal}
-              disabled={portalLoading}
-            >
-              {portalLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            {/* Show upgrade/downgrade options for paid users */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm text-muted-foreground">Change Your Plan</h3>
+              <div className="grid gap-3">
+                <Card className={`border ${trialStatus?.tier === 'founder' ? 'border-primary bg-primary/5' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">Solo Plan</h4>
+                          {trialStatus?.tier === 'founder' && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Current</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">$29/month • For founders, VPs & leaders</p>
+                      </div>
+                      {trialStatus?.tier === 'founder' ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleChangePlan('founder')}
+                          disabled={changePlanLoading === 'founder'}
+                        >
+                          {changePlanLoading === 'founder' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <ArrowDown className="h-4 w-4 mr-1" />
+                              Downgrade
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className={`border ${trialStatus?.tier === 'team' ? 'border-primary bg-primary/5' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">Team Plan</h4>
+                          {trialStatus?.tier === 'team' && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Current</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">$79/month • Up to 10 members</p>
+                      </div>
+                      {trialStatus?.tier === 'team' ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleChangePlan('team')}
+                          disabled={changePlanLoading === 'team'}
+                        >
+                          {changePlanLoading === 'team' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <ArrowUp className="h-4 w-4 mr-1" />
+                              Upgrade
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                Plan changes take effect immediately. Upgrades are prorated for the remaining billing period.
+              </p>
+            </div>
+
+            {/* Cancel Subscription */}
+            <div className="pt-4 border-t border-border">
+              {showCancelConfirm ? (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                  <h4 className="font-medium text-red-400 mb-2">⚠️ Cancel your subscription?</h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    This action will immediately:
+                  </p>
+                  <ul className="text-sm text-muted-foreground mb-4 space-y-1 ml-4">
+                    <li>• Disconnect all your integrations</li>
+                    <li>• Delete your signals and data</li>
+                    <li>• Log you out of your account</li>
+                  </ul>
+                  <p className="text-sm text-red-400 mb-4">
+                    This cannot be undone. You can sign up again anytime.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleCancel}
+                      disabled={cancelLoading}
+                    >
+                      {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Yes, cancel and delete my data
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCancelConfirm(false)}
+                    >
+                      Keep subscription
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <CreditCard className="h-4 w-4 mr-2" />
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="text-sm text-muted-foreground hover:text-red-400 transition-colors"
+                >
+                  Cancel subscription
+                </button>
               )}
-              Manage Subscription
-              <ExternalLink className="h-3 w-3 ml-2" />
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Update payment method, view invoices, or cancel subscription
-            </p>
+            </div>
           </>
         ) : currentTier === 'trial' || (currentTier !== 'expired' && trialStatus?.hasPaymentMethod) ? (
           // During trial - allow plan changes
@@ -364,12 +593,12 @@ function BillingContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">Founder Plan</h4>
+                        <h4 className="font-semibold">Solo Plan</h4>
                         {trialStatus?.tier === 'founder' && (
                           <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Current</span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">$29/month • Best for solo founders</p>
+                      <p className="text-sm text-muted-foreground">$29/month • For founders, VPs & leaders</p>
                     </div>
                     {trialStatus?.tier === 'founder' ? (
                       <Check className="h-5 w-5 text-primary" />
@@ -491,8 +720,8 @@ function BillingContent() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-semibold">Founder Plan</h4>
-                      <p className="text-sm text-muted-foreground">$29/month • Best for solo founders</p>
+                      <h4 className="font-semibold">Solo Plan</h4>
+                      <p className="text-sm text-muted-foreground">$29/month • For founders, VPs & leaders</p>
                     </div>
                     <Button 
                       onClick={() => handleUpgrade('founder')}
@@ -537,7 +766,7 @@ function BillingContent() {
               </Card>
             </div>
             <p className="text-xs text-muted-foreground text-center">
-              14-day free trial • No charge until trial ends • Cancel anytime
+              7-day free trial • Card required • No charge until day 8 • Cancel anytime
             </p>
           </div>
         )}
@@ -551,13 +780,13 @@ function BillingContent() {
         className="text-center pt-4"
       >
         <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <svg className="h-5 w-5" viewBox="0 0 32 32" fill="currentColor">
-            <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.86 1.545-2.354 1.545-1.827 0-4.878-.89-6.964-2.094l-.89 5.555c1.774.95 5.02 1.974 8.392 1.974 2.587 0 4.739-.66 6.29-1.878 1.72-1.334 2.597-3.321 2.597-5.865 0-4.112-2.514-5.885-6.773-7.107z"/>
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
           </svg>
-          Secured by Stripe
+          Secured by Dodo Payments
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          We never store your card details. All payments processed securely by Stripe.
+          We never store your card details. All payments processed securely by Dodo Payments.
         </p>
       </motion.div>
     </div>

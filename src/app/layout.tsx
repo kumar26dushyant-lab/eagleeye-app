@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieConsent } from "@/components/CookieConsent";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,7 +23,8 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
-        <Toaster position="bottom-right" />
+        <Toaster position="top-center" richColors expand={true} />
+        <CookieConsent />
       </body>
     </html>
   );
