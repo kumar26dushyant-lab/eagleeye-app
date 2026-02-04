@@ -9,7 +9,7 @@ import { Logo } from '@/components/brand/Logo'
 
 const PRICING_TIERS = [
   {
-    id: 'solo',
+    id: 'founder',
     name: 'Solo',
     description: 'For Founders, VPs & Department Heads',
     price: 29,
