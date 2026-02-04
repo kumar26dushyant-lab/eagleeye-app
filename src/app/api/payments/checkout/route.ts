@@ -73,12 +73,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user email
-    let customerEmail = email
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let customerEmail = email || null
     
-    if (user?.email) {
-      customerEmail = user.email
+    try {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user?.email) {
+        customerEmail = user.email
+      }
+    } catch (authError) {
+      // Auth might fail for new signups - that's ok, we use the provided email
+      console.log('Auth check skipped (new user):', authError)
+    }
+
+    // Ensure we have a valid email
+    if (!customerEmail || typeof customerEmail !== 'string') {
+      return NextResponse.json(
+        { error: 'Email address is required for checkout' },
+        { status: 400 }
+      )
     }
 
     // Create checkout session with Dodo
@@ -88,10 +102,15 @@ export async function POST(request: NextRequest) {
       ? `${baseUrl}/dashboard?reactivated=true`
       : `${baseUrl}/checkout/success?tier=${tier}`
     
+    // Safely get customer name from email
+    const customerName = customerEmail.includes('@') 
+      ? customerEmail.split('@')[0] 
+      : customerEmail
+
     const client = getDodoClient()
     const session = await client.checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity: 1 }],
-      customer: customerEmail ? { email: customerEmail, name: customerEmail.split('@')[0] } : undefined,
+      customer: { email: customerEmail, name: customerName },
       return_url: returnUrl,
       // Note: Dodo handles trial at product level, not session level
       // For reactivation, product should be configured without trial in Dodo dashboard

@@ -142,35 +142,71 @@ function ChaosWall({ intensity = 1 }: { intensity: number }) {
   )
 }
 
-// Clean signals component
+// Clean signals component with glow effect based on intensity
 function CleanSignals({ intensity = 1 }: { intensity: number }) {
+  // Calculate visual state - higher intensity = more vibrant/glowing
+  const glowOpacity = Math.min(1, intensity * 1.2)
+  const borderOpacity = 0.3 + (intensity * 0.5)
+  const cardOpacity = 0.3 + (intensity * 0.7)
+  
   return (
-    <div className="relative h-[300px] overflow-hidden rounded-xl border border-cyan-500/30 bg-[#0D1117]/80">
-      {/* Calm gradient */}
+    <div 
+      className="relative h-[300px] overflow-hidden rounded-xl border bg-[#0D1117]/80 transition-all duration-300"
+      style={{ 
+        borderColor: `rgba(34, 211, 238, ${borderOpacity})`,
+        boxShadow: intensity > 0.5 ? `0 0 ${30 * intensity}px rgba(34, 211, 238, ${intensity * 0.3})` : 'none'
+      }}
+    >
+      {/* Calm gradient - glows when active */}
       <div 
-        className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5 transition-opacity duration-500"
-        style={{ opacity: intensity }}
+        className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-blue-500/10 transition-opacity duration-300"
+        style={{ opacity: glowOpacity }}
       />
       
-      <div className="p-4 space-y-3 h-full flex flex-col">
+      {/* Glow overlay when EagleEye is dominant */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 to-transparent transition-opacity duration-300"
+        style={{ opacity: intensity > 0.5 ? intensity : 0 }}
+      />
+      
+      <div className="p-4 space-y-3 h-full flex flex-col relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-xs text-cyan-400 font-medium">Morning Brief</span>
+            <div 
+              className="w-2 h-2 rounded-full transition-all duration-300"
+              style={{ 
+                backgroundColor: `rgba(34, 211, 238, ${glowOpacity})`,
+                boxShadow: intensity > 0.5 ? `0 0 8px rgba(34, 211, 238, ${intensity})` : 'none'
+              }}
+            />
+            <span 
+              className="text-xs font-medium transition-all duration-300"
+              style={{ color: `rgba(34, 211, 238, ${glowOpacity})` }}
+            >
+              Morning Brief
+            </span>
           </div>
-          <span className="text-xs text-muted-foreground">3 signals • 5 min read</span>
+          <span 
+            className="text-xs transition-opacity duration-300"
+            style={{ opacity: cardOpacity }}
+          >
+            3 signals • 5 min read
+          </span>
         </div>
         
-        {/* Signal cards */}
+        {/* Signal cards - fade in/out based on intensity */}
         <div className="flex-1 space-y-2">
           {signalCards.map((signal, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: intensity, y: 0 }}
-              transition={{ delay: i * 0.2 + 0.3 }}
-              className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-colors"
+              className="p-3 rounded-lg border transition-all duration-300"
+              style={{ 
+                opacity: cardOpacity,
+                backgroundColor: `rgba(255, 255, 255, ${0.03 + (intensity * 0.03)})`,
+                borderColor: intensity > 0.5 ? `rgba(34, 211, 238, ${intensity * 0.3})` : 'rgba(255, 255, 255, 0.1)',
+                transform: `scale(${0.95 + (intensity * 0.05)})`
+              }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
@@ -206,27 +242,53 @@ function CleanSignals({ intensity = 1 }: { intensity: number }) {
 function ChaosSignalSlider() {
   const [sliderValue, setSliderValue] = useState(100)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+  const [direction, setDirection] = useState<'down' | 'up'>('down')
   const chaosIntensity = sliderValue / 100
   const signalIntensity = 1 - chaosIntensity
   
-  // Auto-animate the slider like a GIF demo
+  // Smooth auto-animation using requestAnimationFrame pattern
   useEffect(() => {
     if (!isAutoPlaying) return
     
-    const animationInterval = setInterval(() => {
-      setSliderValue(prev => {
-        // Animate from chaos (100) to calm (0), then back
-        if (prev <= 0) {
-          // Pause at calm state
-          setTimeout(() => setSliderValue(100), 2000)
-          return 0
-        }
-        return prev - 2 // Smooth decrement
-      })
-    }, 80)
+    let animationId: number
+    let lastTime = 0
+    const speed = 0.8 // Lower = slower, smoother
     
-    return () => clearInterval(animationInterval)
-  }, [isAutoPlaying])
+    const animate = (currentTime: number) => {
+      if (!lastTime) lastTime = currentTime
+      const delta = currentTime - lastTime
+      
+      if (delta > 16) { // ~60fps
+        lastTime = currentTime
+        
+        setSliderValue(prev => {
+          if (direction === 'down') {
+            if (prev <= 5) {
+              // Pause at calm state, then go back up
+              setTimeout(() => setDirection('up'), 1500)
+              return 0
+            }
+            return Math.max(0, prev - speed)
+          } else {
+            if (prev >= 95) {
+              // Pause at chaos state, then go back down
+              setTimeout(() => setDirection('down'), 1500)
+              return 100
+            }
+            return Math.min(100, prev + speed)
+          }
+        })
+      }
+      
+      animationId = requestAnimationFrame(animate)
+    }
+    
+    animationId = requestAnimationFrame(animate)
+    
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId)
+    }
+  }, [isAutoPlaying, direction])
   
   // Stop auto-play when user interacts
   const handleManualChange = (value: number) => {
@@ -234,12 +296,18 @@ function ChaosSignalSlider() {
     setSliderValue(value)
   }
   
+  const restartDemo = () => {
+    setSliderValue(100)
+    setDirection('down')
+    setIsAutoPlaying(true)
+  }
+  
   return (
     <div className="space-y-6">
       {/* Slider with visual track */}
-      <div className="relative">
+      <div className="relative py-2">
         {/* Slider track background with gradient glow */}
-        <div className="absolute inset-0 h-4 rounded-full bg-gradient-to-r from-cyan-500/20 via-yellow-500/20 to-red-500/20 blur-md" />
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-5 rounded-full bg-gradient-to-r from-cyan-500/20 via-yellow-500/10 to-red-500/20 blur-lg" />
         
         <input
           type="range"
@@ -249,24 +317,36 @@ function ChaosSignalSlider() {
           onChange={(e) => handleManualChange(Number(e.target.value))}
           className="w-full h-4 rounded-full appearance-none cursor-pointer relative z-10"
           style={{
-            background: `linear-gradient(to right, #22D3EE 0%, #22D3EE ${100 - sliderValue}%, #fbbf24 ${50}%, #ef4444 ${100 - sliderValue}%, #ef4444 100%)`
+            background: `linear-gradient(to right, 
+              #22D3EE 0%, 
+              #22D3EE ${Math.max(0, 100 - sliderValue - 5)}%, 
+              #fbbf24 ${Math.max(0, 100 - sliderValue)}%, 
+              #ef4444 ${Math.min(100, 100 - sliderValue + 20)}%, 
+              #ef4444 100%)`
           }}
         />
         
         {/* Animated thumb indicator */}
         <motion.div 
-          className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-lg border-2 pointer-events-none z-20"
+          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow-lg border-2 pointer-events-none z-20"
           style={{ 
-            left: `calc(${100 - sliderValue}% - 12px)`,
-            borderColor: sliderValue > 50 ? '#ef4444' : '#22D3EE'
+            left: `calc(${100 - sliderValue}% - 14px)`,
+            borderColor: sliderValue > 50 ? '#ef4444' : '#22D3EE',
+            boxShadow: sliderValue > 50 
+              ? '0 0 15px rgba(239, 68, 68, 0.5)' 
+              : '0 0 15px rgba(34, 211, 238, 0.5)'
           }}
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 0.5, repeat: Infinity }}
         />
         
-        <div className="flex justify-between mt-4 text-sm font-medium">
+        <div className="flex justify-between mt-5 text-sm font-medium">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse" />
+            <div 
+              className="w-3 h-3 rounded-full bg-cyan-400 transition-all duration-300"
+              style={{ 
+                boxShadow: signalIntensity > 0.5 ? '0 0 10px rgba(34, 211, 238, 0.8)' : 'none',
+                opacity: 0.5 + (signalIntensity * 0.5)
+              }}
+            />
             <span className="text-cyan-400">EagleEye View</span>
           </div>
           <div className="text-center text-white/50 text-xs">
@@ -277,7 +357,7 @@ function ChaosSignalSlider() {
               </span>
             ) : (
               <button 
-                onClick={() => { setIsAutoPlaying(true); setSliderValue(100) }}
+                onClick={restartDemo}
                 className="text-cyan-400 hover:underline"
               >
                 ↻ Replay demo
@@ -286,7 +366,13 @@ function ChaosSignalSlider() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-red-400">Chaos</span>
-            <div className="w-3 h-3 rounded-full bg-red-400 animate-pulse" />
+            <div 
+              className="w-3 h-3 rounded-full bg-red-400 transition-all duration-300"
+              style={{ 
+                boxShadow: chaosIntensity > 0.5 ? '0 0 10px rgba(239, 68, 68, 0.8)' : 'none',
+                opacity: 0.5 + (chaosIntensity * 0.5)
+              }}
+            />
           </div>
         </div>
       </div>
@@ -295,20 +381,32 @@ function ChaosSignalSlider() {
       <div className="grid md:grid-cols-2 gap-4">
         <div className="relative">
           <motion.div 
-            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-xs text-cyan-400 z-10 flex items-center gap-2"
-            animate={{ opacity: signalIntensity > 0.5 ? 1 : 0.5 }}
+            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-xs text-cyan-400 z-10 flex items-center gap-2 transition-all duration-300"
+            style={{ 
+              opacity: 0.4 + (signalIntensity * 0.6),
+              boxShadow: signalIntensity > 0.5 ? '0 0 10px rgba(34, 211, 238, 0.3)' : 'none'
+            }}
           >
-            <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ opacity: signalIntensity }} />
+            <span 
+              className="w-2 h-2 rounded-full bg-cyan-400 transition-all duration-300" 
+              style={{ opacity: signalIntensity }} 
+            />
             EagleEye
           </motion.div>
-          <CleanSignals intensity={signalIntensity + 0.3} />
+          <CleanSignals intensity={signalIntensity} />
         </div>
         <div className="relative">
           <motion.div 
-            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-xs text-red-400 z-10 flex items-center gap-2"
-            animate={{ opacity: chaosIntensity > 0.5 ? 1 : 0.5 }}
+            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-xs text-red-400 z-10 flex items-center gap-2 transition-all duration-300"
+            style={{ 
+              opacity: 0.4 + (chaosIntensity * 0.6),
+              boxShadow: chaosIntensity > 0.5 ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
+            }}
           >
-            <span className="w-2 h-2 rounded-full bg-red-400" style={{ opacity: chaosIntensity }} />
+            <span 
+              className="w-2 h-2 rounded-full bg-red-400 transition-all duration-300" 
+              style={{ opacity: chaosIntensity }} 
+            />
             Without EagleEye
           </motion.div>
           <ChaosWall intensity={chaosIntensity} />
