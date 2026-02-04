@@ -135,7 +135,7 @@ function baseTemplate(content: string): string {
       <div style="${emailStyles.container}">
         <div style="${emailStyles.header}">
           <h1 style="${emailStyles.logo}">🦅 EagleEye</h1>
-          <p style="${emailStyles.tagline}">Your AI-Powered Daily Brief</p>
+          <p style="${emailStyles.tagline}">Own the Signal. Master the Chaos.</p>
         </div>
         <div style="${emailStyles.body}">
           ${content}

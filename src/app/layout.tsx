@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "EagleEye - See what matters before it becomes a problem",
-  description: "Decision-intelligence that surfaces only what needs your attention. Built for founders and leaders who hate noise.",
+  title: "EagleEye - Own the Signal. Master the Chaos.",
+  description: "While your competitors drown in 1,000+ notifications, you're already making the winning move. EagleEye filters noise into the 3 critical priorities that matter.",
 };
 
 export default function RootLayout({

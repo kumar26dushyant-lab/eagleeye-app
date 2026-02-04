@@ -135,12 +135,12 @@ function BrandText({
       {/* Tagline */}
       {showTagline && (
         <motion.span 
-          className={`${sizeConfig.tagline} text-cyan-400/80 tracking-[0.2em] uppercase font-semibold`}
+          className={`${sizeConfig.tagline} text-cyan-400/80 tracking-[0.15em] uppercase font-semibold`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          Signal • Focus • Succeed
+          Own the Signal
         </motion.span>
       )}
     </div>
