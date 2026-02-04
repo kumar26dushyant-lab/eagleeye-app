@@ -56,12 +56,13 @@ export async function POST(request: NextRequest) {
 
     // Use direct fetch to Dodo API instead of SDK
     // Correct URLs: test.dodopayments.com (test) or live.dodopayments.com (live)
-    const isTestMode = process.env.DODO_PAYMENTS_ENVIRONMENT === 'test_mode'
-    const apiBaseUrl = isTestMode 
-      ? 'https://test.dodopayments.com'
-      : 'https://live.dodopayments.com'
+    // Default to test_mode since products are created there
+    const isLiveMode = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode'
+    const apiBaseUrl = isLiveMode 
+      ? 'https://live.dodopayments.com'
+      : 'https://test.dodopayments.com'
 
-    console.log('Creating checkout via direct API:', { apiBaseUrl, productId, email: customerName })
+    console.log('Creating checkout via direct API:', { apiBaseUrl, productId, email: customerName, env: process.env.DODO_PAYMENTS_ENVIRONMENT })
 
     const response = await fetch(`${apiBaseUrl}/checkouts`, {
       method: 'POST',
