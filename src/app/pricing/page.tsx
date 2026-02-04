@@ -89,13 +89,20 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [productIds, setProductIds] = useState<Record<string, { monthly?: string; annual?: string }>>({})
+  const [apiError, setApiError] = useState(false)
 
   // Fetch product IDs on mount
   useEffect(() => {
     fetch('/api/products')
       .then(res => res.json())
-      .then(data => setProductIds(data))
-      .catch(err => console.error('Failed to fetch product IDs:', err))
+      .then(data => {
+        setProductIds(data)
+        setApiError(false)
+      })
+      .catch(err => {
+        console.error('Failed to fetch product IDs:', err)
+        setApiError(true)
+      })
   }, [])
 
   const handleSubscribe = async (tierId: string) => {
@@ -111,8 +118,9 @@ export default function PricingPage() {
     const productId = billingCycle === 'annual' ? tierProducts?.annual : tierProducts?.monthly
     
     if (!productId) {
-      console.error('Product ID not found for tier:', tierId)
-      setLoading(null)
+      // Fallback: redirect to signup with plan param
+      console.log('Product ID not loaded yet, redirecting to signup')
+      window.location.href = `/signup?plan=${tierId}`
       return
     }
     
