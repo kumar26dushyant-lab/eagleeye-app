@@ -14,12 +14,12 @@ interface LogoProps {
 }
 
 const sizes = {
-  xs: { icon: 24, text: 'text-base', tagline: 'text-[7px]', gap: 'gap-1.5' },
-  sm: { icon: 28, text: 'text-lg', tagline: 'text-[8px]', gap: 'gap-2' },
-  md: { icon: 36, text: 'text-xl', tagline: 'text-[9px]', gap: 'gap-2.5' },
-  lg: { icon: 48, text: 'text-2xl', tagline: 'text-[10px]', gap: 'gap-3' },
-  xl: { icon: 64, text: 'text-4xl', tagline: 'text-xs', gap: 'gap-4' },
-  hero: { icon: 88, text: 'text-5xl', tagline: 'text-sm', gap: 'gap-5' },
+  xs: { icon: 32, text: 'text-lg', tagline: 'text-[7px]', gap: 'gap-2' },
+  sm: { icon: 36, text: 'text-xl', tagline: 'text-[8px]', gap: 'gap-2' },
+  md: { icon: 44, text: 'text-2xl', tagline: 'text-[9px]', gap: 'gap-2.5' },
+  lg: { icon: 56, text: 'text-3xl', tagline: 'text-[10px]', gap: 'gap-3' },
+  xl: { icon: 72, text: 'text-4xl', tagline: 'text-xs', gap: 'gap-4' },
+  hero: { icon: 96, text: 'text-5xl', tagline: 'text-sm', gap: 'gap-5' },
 }
 
 // Premium Eagle Eye Icon with animated glow

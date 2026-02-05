@@ -135,7 +135,8 @@ function ChaosWall({ intensity = 1 }: { intensity: number }) {
       {/* Counter */}
       <div className="absolute top-2 right-2 sm:top-4 sm:right-4 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50">
         <span className="text-red-400 font-mono text-[10px] sm:text-sm">
-          {Math.round(100 * intensity)}+ notifs
+          <span className="hidden sm:inline">{Math.round(100 * intensity)}+ notifications</span>
+          <span className="sm:hidden">{Math.round(100 * intensity)}+</span>
         </span>
       </div>
     </div>
@@ -534,19 +535,22 @@ export default function Home() {
           scrolled ? 'bg-[#0D1117]/95 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
         }`}
       >
-        <nav className="max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 h-14 sm:h-20 flex items-center justify-between">
-          {/* Logo - smaller on mobile */}
+        <nav className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
+          {/* Logo */}
           <div className="flex-shrink-0">
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
+              <Logo size="lg" showText={true} showTagline={false} animated={true} variant="glow" />
+            </div>
+            <div className="hidden sm:block md:hidden">
               <Logo size="md" showText={true} showTagline={false} animated={true} variant="glow" />
             </div>
             <div className="sm:hidden">
-              <Logo size="xs" showText={true} showTagline={false} animated={false} variant="default" />
+              <Logo size="sm" showText={true} showTagline={false} animated={false} variant="default" />
             </div>
           </div>
           
           {/* Nav items */}
-          <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">
+          <div className="flex items-center gap-4 sm:gap-6 flex-shrink-0">
             <Link href="/pricing" className="text-sm text-white/70 hover:text-white transition-colors hidden sm:block">
               Pricing
             </Link>
@@ -1138,7 +1142,7 @@ export default function Home() {
       <footer className="border-t border-white/10 py-8 sm:py-12 px-4 sm:px-6 lg:px-12 xl:px-20 bg-[#0a0a0a]">
         <div className="max-w-[1800px] mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-            <Logo size="md" animated={false} />
+            <Logo size="lg" animated={false} />
             <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-white/50">
               <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
