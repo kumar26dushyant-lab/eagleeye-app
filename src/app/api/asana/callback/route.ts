@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { encryptToken } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -48,14 +49,26 @@ export async function GET(request: NextRequest) {
     const workspacesData = await workspacesResponse.json()
     const workspace = workspacesData.data?.[0]
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = await encryptToken(tokenData.access_token)
+    const encryptedRefreshToken = tokenData.refresh_token 
+      ? await encryptToken(tokenData.refresh_token) 
+      : null
+    
+    // Calculate token expiry (Asana tokens expire in 1 hour)
+    const tokenExpiresAt = tokenData.expires_in
+      ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      : new Date(Date.now() + 3600 * 1000).toISOString() // Default 1 hour
+
     // Save integration
     await supabase
       .from('integrations')
       .upsert({
         user_id: user.id,
         provider: 'asana',
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        token_expires_at: tokenExpiresAt,
         workspace_id: workspace?.gid,
         workspace_name: workspace?.name,
         is_active: true,

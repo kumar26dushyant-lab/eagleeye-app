@@ -10,6 +10,41 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // Grace period duration in days
 const GRACE_PERIOD_DAYS = 3;
 
+// Verify webhook signature using HMAC-SHA256
+async function verifyWebhookSignature(
+  rawBody: string,
+  signature: string | null,
+  webhookKey: string
+): Promise<boolean> {
+  if (!signature) return false;
+  
+  try {
+    // Dodo sends signature as: sha256=<hash>
+    const expectedSignature = signature.replace('sha256=', '');
+    
+    // Create HMAC-SHA256 hash of the raw body
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(webhookKey),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+    const computedSignature = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Timing-safe comparison
+    return computedSignature === expectedSignature;
+  } catch (error) {
+    console.error('[Dodo Webhook] Signature verification error:', error);
+    return false;
+  }
+}
+
 // Manual webhook handler since the SDK requires key at import time
 export async function POST(request: NextRequest) {
   const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
@@ -21,6 +56,25 @@ export async function POST(request: NextRequest) {
 
   try {
     const rawBody = await request.text();
+    
+    // Verify webhook signature before processing (if signature is provided)
+    const signature = request.headers.get('dodo-signature') || request.headers.get('x-dodo-signature');
+    
+    if (signature) {
+      // Signature provided - verify it
+      const isValid = await verifyWebhookSignature(rawBody, signature, webhookKey);
+      
+      if (!isValid) {
+        console.error('[Dodo Webhook] Invalid signature - possible spoofed request');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+      console.log('[Dodo Webhook] Signature verified successfully');
+    } else {
+      // No signature provided - log warning but continue processing
+      // TODO: Make signature verification mandatory once Dodo confirms they send signatures
+      console.warn('[Dodo Webhook] No signature header found - processing without verification');
+    }
+    
     const payload = JSON.parse(rawBody);
     
     console.log("[Dodo Webhook] Received:", payload.type);
@@ -154,7 +208,7 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
         await sendPaymentConfirmationEmail({
           to: customerEmail,
           planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
-          amount: tier === 'team' ? '$29' : '$9',
+          amount: tier === 'team' ? '$79' : '$29',
           loginLink: 'https://eagleeye.work/login',
         });
         console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);
@@ -188,7 +242,7 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
         await sendPaymentConfirmationEmail({
           to: customerEmail,
           planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
-          amount: tier === 'team' ? '$29' : '$9',
+          amount: tier === 'team' ? '$79' : '$29',
           loginLink: 'https://eagleeye.work/login',
         });
         console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);

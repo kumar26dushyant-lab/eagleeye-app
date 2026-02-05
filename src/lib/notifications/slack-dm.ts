@@ -140,7 +140,7 @@ function buildSlackBlocks(summary: SignalSummary): any[] {
           text: '📊 Open Dashboard',
           emoji: true,
         },
-        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.eagleeye.com'}/dashboard`,
+        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/dashboard`,
         style: 'primary',
       },
       {
@@ -150,7 +150,7 @@ function buildSlackBlocks(summary: SignalSummary): any[] {
           text: '⚙️ Settings',
           emoji: true,
         },
-        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.eagleeye.com'}/settings/notifications`,
+        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/settings/notifications`,
       },
     ],
   })

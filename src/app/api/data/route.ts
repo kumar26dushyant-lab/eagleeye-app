@@ -6,6 +6,8 @@ import type { IntentMode } from '@/lib/importance'
 import type { CommunicationSignal, WorkItem, SignalType } from '@/types'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { IntegrationManager } from '@/lib/integrations/manager'
+import { getValidAccessToken } from '@/lib/token-refresh'
+import { decryptToken } from '@/lib/encryption'
 import { 
   getTimeWindow, 
   getMultiDayWindow,
@@ -359,6 +361,7 @@ function classifySlackMessage(text: string, botUserId: string): { signalType: Si
 }
 
 // Get Slack client (from env or user's OAuth token)
+// Slack tokens are long-lived, so we only need to decrypt
 async function getSlackClient(userId: string, supabase: SupabaseClient) {
   // First check if user has OAuth token stored
   const { data: integration } = await supabase
@@ -370,7 +373,9 @@ async function getSlackClient(userId: string, supabase: SupabaseClient) {
     .single()
 
   if (integration?.access_token) {
-    return new WebClient(integration.access_token)
+    // Decrypt the token before use
+    const decryptedToken = await decryptToken(integration.access_token)
+    return new WebClient(decryptedToken)
   }
 
   // Fall back to env token (for testing)
@@ -382,18 +387,17 @@ async function getSlackClient(userId: string, supabase: SupabaseClient) {
 }
 
 // Get Asana token (from database or env)
+// Asana tokens expire in 1 hour, so we use getValidAccessToken for auto-refresh
 async function getAsanaToken(userId: string, supabase: SupabaseClient): Promise<string | null> {
-  // First check if user has token stored in database
-  const { data: integration } = await supabase
-    .from('integrations')
-    .select('access_token')
-    .eq('user_id', userId)
-    .eq('provider', 'asana')
-    .eq('is_active', true)
-    .single()
-
-  if (integration?.access_token) {
-    return integration.access_token
+  // Use the token refresh utility which handles decryption + auto-refresh
+  const { token, error } = await getValidAccessToken(userId, 'asana')
+  
+  if (token) {
+    return token
+  }
+  
+  if (error) {
+    console.error('[Asana] Token error:', error)
   }
 
   // Fall back to env token (for testing)
@@ -401,6 +405,7 @@ async function getAsanaToken(userId: string, supabase: SupabaseClient): Promise<
 }
 
 // Get Linear token (from database or env)
+// Linear uses long-lived API keys, so we only need to decrypt
 async function getLinearToken(userId: string, supabase: SupabaseClient): Promise<string | null> {
   // First check if user has token stored in database
   const { data: integration } = await supabase
@@ -412,7 +417,9 @@ async function getLinearToken(userId: string, supabase: SupabaseClient): Promise
     .single()
 
   if (integration?.access_token) {
-    return integration.access_token
+    // Decrypt the token before use
+    const decryptedToken = await decryptToken(integration.access_token)
+    return decryptedToken
   }
 
   // Fall back to env token (for testing)

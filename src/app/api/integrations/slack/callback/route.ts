@@ -1,6 +1,7 @@
 // Slack OAuth - Step 2: Handle callback from Slack
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { encryptToken } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -68,13 +69,16 @@ export async function GET(request: NextRequest) {
     const teamName = tokenData.team?.name
     const authedUser = tokenData.authed_user
 
+    // Encrypt token before storing (Slack tokens are long-lived, no expiry needed)
+    const encryptedAccessToken = await encryptToken(accessToken)
+
     // Store the integration in Supabase
     const { error: dbError } = await supabase
       .from('integrations')
       .upsert({
         user_id: user.id,
         provider: 'slack',
-        access_token: accessToken, // In production, encrypt this!
+        access_token: encryptedAccessToken,
         team_id: teamId,
         team_name: teamName,
         authed_user_id: authedUser?.id,

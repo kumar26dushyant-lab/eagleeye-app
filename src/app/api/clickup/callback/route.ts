@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getClickUpWorkspaces } from '@/lib/clickup'
+import { encryptToken } from '@/lib/encryption'
 import type { Integration } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -38,6 +39,9 @@ export async function GET(request: NextRequest) {
     const workspaces = await getClickUpWorkspaces(accessToken)
     const primaryWorkspace = workspaces[0]
 
+    // Encrypt token before storing (ClickUp tokens are long-lived, no expiry needed)
+    const encryptedAccessToken = await encryptToken(accessToken)
+
     // Save integration
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
       .upsert({
         user_id: user.id,
         provider: 'clickup',
-        access_token: accessToken,
+        access_token: encryptedAccessToken,
         workspace_id: primaryWorkspace?.id || null,
         workspace_name: primaryWorkspace?.name || null,
         is_active: true,

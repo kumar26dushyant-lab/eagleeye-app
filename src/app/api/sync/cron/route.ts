@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { processWorkItemNotifications, processSignalNotifications } from '@/lib/notifications/triggers'
+import { getValidAccessToken } from '@/lib/token-refresh'
 
 // Use service role for cron (bypasses RLS)
 const supabaseAdmin = createClient(
@@ -137,14 +138,23 @@ export async function GET(request: Request) {
 
 /**
  * Sync a single integration and return items
+ * Uses getValidAccessToken for automatic decryption and token refresh
  */
 async function syncIntegration(
   integration: { provider: string; access_token: string; workspace_id: string | null; user_id: string },
   userId: string
 ): Promise<{ workItems?: any[]; signals?: any[] }> {
-  const { provider, access_token, workspace_id } = integration
+  const { provider, workspace_id } = integration
 
   try {
+    // Get a valid (decrypted + refreshed if needed) access token
+    const { token: access_token, error: tokenError } = await getValidAccessToken(userId, provider)
+    
+    if (tokenError || !access_token) {
+      console.error(`[Sync Cron] Token error for ${provider}:`, tokenError)
+      return {}
+    }
+
     switch (provider) {
       case 'asana': {
         const { getWorkspaces, getMyTasks, taskToWorkItem } = await import('@/lib/integrations/asana')

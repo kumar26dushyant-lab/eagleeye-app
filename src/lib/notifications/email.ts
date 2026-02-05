@@ -174,12 +174,12 @@ function generateDigestHTML(data: EmailDigestData): string {
 
     <!-- CTA -->
     <div style="padding: 30px 0; text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard" 
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/dashboard" 
          style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
         Open Dashboard →
       </a>
       <p style="color: #71717a; font-size: 13px; margin-top: 15px;">
-        Need to adjust what you see? <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/notifications" style="color: #60a5fa;">Update preferences</a>
+        Need to adjust what you see? <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/settings/notifications" style="color: #60a5fa;">Update preferences</a>
       </p>
     </div>
 
@@ -187,8 +187,8 @@ function generateDigestHTML(data: EmailDigestData): string {
     <div style="padding: 20px 0; text-align: center; border-top: 1px solid #27272a;">
       <p style="color: #52525b; font-size: 12px; margin: 0;">
         EagleEye • Your Decision Intelligence Layer<br>
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/notifications" style="color: #52525b;">Unsubscribe</a> • 
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/help" style="color: #52525b;">Help</a>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/settings/notifications" style="color: #52525b;">Unsubscribe</a> • 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/help" style="color: #52525b;">Help</a>
       </p>
     </div>
 
@@ -244,9 +244,9 @@ ${data.quickWins.slice(0, 3).map(q => `• ${q.title} (~${q.estimatedTime})`).jo
 
   text += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Open Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard
+Open Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/dashboard
 
-Update preferences: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/notifications
+Update preferences: ${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/settings/notifications
 `
 
   return text.trim()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { encryptToken } from '@/lib/encryption'
 import type { Integration } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -48,6 +49,17 @@ export async function GET(request: NextRequest) {
     const accessToken = tokenData.access_token
     const refreshToken = tokenData.refresh_token
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = await encryptToken(accessToken)
+    const encryptedRefreshToken = refreshToken 
+      ? await encryptToken(refreshToken) 
+      : null
+    
+    // Calculate token expiry (Teams tokens expire in 1 hour)
+    const tokenExpiresAt = tokenData.expires_in
+      ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      : new Date(Date.now() + 3600 * 1000).toISOString() // Default 1 hour
+
     // Get user info to get tenant/organization
     const userResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
       headers: {
@@ -86,8 +98,9 @@ export async function GET(request: NextRequest) {
       .upsert({
         user_id: user.id,
         provider: 'teams',
-        access_token: accessToken,
-        refresh_token: refreshToken,
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        token_expires_at: tokenExpiresAt,
         workspace_id: null, // Will be set when user selects teams/channels
         workspace_name: tenantName,
         is_active: true,

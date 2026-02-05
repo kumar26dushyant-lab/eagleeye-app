@@ -167,7 +167,7 @@ function generateEmailHTML(summary: SignalSummary, frequency: string): string {
 
         <!-- CTA -->
         <div style="text-align: center; margin-top: 24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.eagleeye.com'}/dashboard" 
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://eagleeye.work'}/dashboard" 
              style="display: inline-block; background: #2563EB; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
             Open Dashboard →
           </a>
