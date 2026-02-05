@@ -923,7 +923,7 @@ export default function Home() {
             </div>
             
             <p className="text-center text-xs sm:text-sm text-white/40 mt-6 sm:mt-8">
-              All plans include a 7-day free trial. No credit card required.
+              All plans include a 7-day free trial. Cancel anytime.
             </p>
           </div>
         </section>
@@ -1128,7 +1128,7 @@ export default function Home() {
               </div>
               
               <p className="text-xs sm:text-sm text-white/40 mt-4 sm:mt-6 relative z-10">
-                No credit card required • Cancel anytime • $29/month after trial
+                7-day free trial • Cancel anytime • $29/month after trial
               </p>
             </motion.div>
           </div>
