@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       ? `${baseUrl}/dashboard?reactivated=true`
       : `${baseUrl}/checkout/success?tier=${tier}`
 
-    const customerName = email.split('@')[0]
+    // Don't pre-fill name - let user enter it on checkout page
+    // This allows them to edit both name and email if needed
 
     // Use direct fetch to Dodo API instead of SDK
     // Correct URLs: test.dodopayments.com (test) or live.dodopayments.com (live)
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     // Also trim the API key to remove any whitespace
     const cleanApiKey = apiKey.trim()
 
-    console.log('Creating checkout via direct API:', { apiBaseUrl, productId, email: customerName, envMode, isLiveMode })
+    console.log('Creating checkout via direct API:', { apiBaseUrl, productId, email, envMode, isLiveMode })
 
     const response = await fetch(`${apiBaseUrl}/checkouts`, {
       method: 'POST',
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         product_cart: [{ product_id: productId, quantity: 1 }],
-        customer: { email: email, name: customerName },
+        customer: { email: email },
         return_url: returnUrl,
       }),
     })
