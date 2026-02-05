@@ -43,10 +43,11 @@ function IntegrationsContent() {
     { id: 'asana', name: 'Asana', icon: '📋', description: 'Tasks, projects, deadlines', connected: false },
     { id: 'linear', name: 'Linear', icon: '🎯', description: 'Issues, sprints, blockers', connected: false },
     { id: 'clickup', name: 'ClickUp', icon: '✅', description: 'Tasks, workspaces', connected: false },
-    { id: 'notion', name: 'Notion', icon: '📝', description: 'Databases, docs', connected: false, comingSoon: true },
-    { id: 'github', name: 'GitHub', icon: '🐙', description: 'PRs, issues, reviews', connected: false, comingSoon: true },
     { id: 'jira', name: 'Jira', icon: '🔷', description: 'Tickets, sprints', connected: false },
     { id: 'teams', name: 'MS Teams', icon: '👥', description: 'Channels, chats', connected: false },
+    // Coming soon items at bottom
+    { id: 'notion', name: 'Notion', icon: '📝', description: 'Databases, docs', connected: false, comingSoon: true },
+    { id: 'github', name: 'GitHub', icon: '🐙', description: 'PRs, issues, reviews', connected: false, comingSoon: true },
   ])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -233,25 +234,27 @@ function IntegrationsContent() {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="mb-6">
+          {/* Top row: Back and Refresh buttons */}
+          <div className="flex items-center justify-between mb-4">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold">Connect Your Workspace</h1>
-              <p className="text-sm text-muted-foreground">
-                One place to see signals from all your tools
-              </p>
-            </div>
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          {/* Title section */}
+          <div>
+            <h1 className="text-2xl font-bold">Connect Your Workspace</h1>
+            <p className="text-sm text-muted-foreground">
+              One place to see signals from all your tools
+            </p>
+          </div>
         </div>
 
         {/* Trust Banner - CRITICAL for adoption */}
