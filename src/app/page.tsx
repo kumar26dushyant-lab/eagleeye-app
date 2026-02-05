@@ -86,10 +86,10 @@ const signalCards = [
   },
 ]
 
-// Animated chaos wall component
+// Animated chaos wall component (mobile responsive)
 function ChaosWall({ intensity = 1 }: { intensity: number }) {
   return (
-    <div className="relative h-[300px] overflow-hidden rounded-xl border border-red-500/30">
+    <div className="relative h-[220px] sm:h-[300px] overflow-hidden rounded-xl border border-red-500/30">
       {/* Red stress overlay */}
       <div 
         className="absolute inset-0 bg-gradient-to-br from-red-500/20 via-red-900/30 to-transparent transition-opacity duration-500"
@@ -97,7 +97,7 @@ function ChaosWall({ intensity = 1 }: { intensity: number }) {
       />
       
       {/* Chaos notifications */}
-      <div className="absolute inset-0 p-4">
+      <div className="absolute inset-0 p-2 sm:p-4">
         {chaosNotifications.map((notif, i) => (
           <motion.div
             key={i}
@@ -112,16 +112,16 @@ function ChaosWall({ intensity = 1 }: { intensity: number }) {
               repeat: Infinity,
               delay: i * 0.15
             }}
-            className="absolute px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-xs"
+            className="absolute px-2 py-1 sm:px-3 sm:py-2 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-[10px] sm:text-xs max-w-[140px] sm:max-w-none"
             style={{ 
               top: `${(i * 10) % 85}%`,
-              left: `${(i * 15 + 5) % 70}%`,
+              left: `${(i * 15 + 5) % 60}%`,
               borderLeftColor: notif.color,
               borderLeftWidth: 3,
             }}
           >
             <span className="text-muted-foreground">{notif.app}:</span>
-            <span className="ml-1 text-foreground/80">{notif.text}</span>
+            <span className="ml-1 text-foreground/80 line-clamp-1">{notif.text}</span>
           </motion.div>
         ))}
       </div>
@@ -133,16 +133,16 @@ function ChaosWall({ intensity = 1 }: { intensity: number }) {
       />
       
       {/* Counter */}
-      <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50">
-        <span className="text-red-400 font-mono text-sm">
-          {Math.round(100 * intensity)}+ notifications
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50">
+        <span className="text-red-400 font-mono text-[10px] sm:text-sm">
+          {Math.round(100 * intensity)}+ notifs
         </span>
       </div>
     </div>
   )
 }
 
-// Clean signals component with glow effect based on intensity
+// Clean signals component with glow effect based on intensity (mobile responsive)
 function CleanSignals({ intensity = 1 }: { intensity: number }) {
   // Calculate visual state - higher intensity = more vibrant/glowing
   const glowOpacity = Math.min(1, intensity * 1.2)
@@ -151,7 +151,7 @@ function CleanSignals({ intensity = 1 }: { intensity: number }) {
   
   return (
     <div 
-      className="relative h-[300px] overflow-hidden rounded-xl border bg-[#0D1117]/80 transition-all duration-300"
+      className="relative h-[220px] sm:h-[300px] overflow-hidden rounded-xl border bg-[#0D1117]/80 transition-all duration-300"
       style={{ 
         borderColor: `rgba(34, 211, 238, ${borderOpacity})`,
         boxShadow: intensity > 0.5 ? `0 0 ${30 * intensity}px rgba(34, 211, 238, ${intensity * 0.3})` : 'none'
@@ -169,38 +169,38 @@ function CleanSignals({ intensity = 1 }: { intensity: number }) {
         style={{ opacity: intensity > 0.5 ? intensity : 0 }}
       />
       
-      <div className="p-4 space-y-3 h-full flex flex-col relative z-10">
+      <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 h-full flex flex-col relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div 
-              className="w-2 h-2 rounded-full transition-all duration-300"
+              className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300"
               style={{ 
                 backgroundColor: `rgba(34, 211, 238, ${glowOpacity})`,
                 boxShadow: intensity > 0.5 ? `0 0 8px rgba(34, 211, 238, ${intensity})` : 'none'
               }}
             />
             <span 
-              className="text-xs font-medium transition-all duration-300"
+              className="text-[10px] sm:text-xs font-medium transition-all duration-300"
               style={{ color: `rgba(34, 211, 238, ${glowOpacity})` }}
             >
               Morning Brief
             </span>
           </div>
           <span 
-            className="text-xs transition-opacity duration-300"
+            className="text-[10px] sm:text-xs transition-opacity duration-300"
             style={{ opacity: cardOpacity }}
           >
-            3 signals • 5 min read
+            3 signals • 5 min
           </span>
         </div>
         
         {/* Signal cards - fade in/out based on intensity */}
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-1.5 sm:space-y-2 overflow-hidden">
           {signalCards.map((signal, i) => (
             <motion.div
               key={i}
-              className="p-3 rounded-lg border transition-all duration-300"
+              className="p-2 sm:p-3 rounded-lg border transition-all duration-300"
               style={{ 
                 opacity: cardOpacity,
                 backgroundColor: `rgba(255, 255, 255, ${0.03 + (intensity * 0.03)})`,
@@ -208,29 +208,29 @@ function CleanSignals({ intensity = 1 }: { intensity: number }) {
                 transform: `scale(${0.95 + (intensity * 0.05)})`
               }}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
                     <span 
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      className="text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap"
                       style={{ backgroundColor: `${signal.color}20`, color: signal.color }}
                     >
                       {signal.type}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">{signal.source}</span>
+                    <span className="text-[8px] sm:text-[10px] text-muted-foreground truncate">{signal.source}</span>
                   </div>
-                  <p className="text-sm font-medium text-foreground/90">{signal.title}</p>
+                  <p className="text-xs sm:text-sm font-medium text-foreground/90 truncate">{signal.title}</p>
                 </div>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{signal.time}</span>
+                <span className="text-[8px] sm:text-[10px] text-muted-foreground whitespace-nowrap">{signal.time}</span>
               </div>
             </motion.div>
           ))}
         </div>
         
         {/* Footer stat */}
-        <div className="pt-2 border-t border-white/10 text-center">
-          <span className="text-xs text-muted-foreground">
-            <span className="text-cyan-400 font-semibold">97 notifications filtered</span> • 12 minutes saved
+        <div className="pt-1.5 sm:pt-2 border-t border-white/10 text-center">
+          <span className="text-[10px] sm:text-xs text-muted-foreground">
+            <span className="text-cyan-400 font-semibold">97 filtered</span> • 12 min saved
           </span>
         </div>
       </div>
@@ -328,9 +328,9 @@ function ChaosSignalSlider() {
         
         {/* Animated thumb indicator */}
         <motion.div 
-          className="absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow-lg border-2 pointer-events-none z-20"
+          className="absolute top-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white shadow-lg border-2 pointer-events-none z-20"
           style={{ 
-            left: `calc(${100 - sliderValue}% - 14px)`,
+            left: `calc(${100 - sliderValue}% - 12px)`,
             borderColor: sliderValue > 50 ? '#ef4444' : '#22D3EE',
             boxShadow: sliderValue > 50 
               ? '0 0 15px rgba(239, 68, 68, 0.5)' 
@@ -338,36 +338,38 @@ function ChaosSignalSlider() {
           }}
         />
         
-        <div className="flex justify-between mt-5 text-sm font-medium">
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between mt-4 sm:mt-5 text-xs sm:text-sm font-medium">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div 
-              className="w-3 h-3 rounded-full bg-cyan-400 transition-all duration-300"
+              className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-cyan-400 transition-all duration-300"
               style={{ 
                 boxShadow: signalIntensity > 0.5 ? '0 0 10px rgba(34, 211, 238, 0.8)' : 'none',
                 opacity: 0.5 + (signalIntensity * 0.5)
               }}
             />
-            <span className="text-cyan-400">EagleEye View</span>
+            <span className="text-cyan-400 hidden sm:inline">EagleEye View</span>
+            <span className="text-cyan-400 sm:hidden">EagleEye</span>
           </div>
-          <div className="text-center text-white/50 text-xs">
+          <div className="text-center text-white/50 text-[10px] sm:text-xs">
             {isAutoPlaying ? (
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                Auto demo
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="hidden sm:inline">Auto demo</span>
+                <span className="sm:hidden">Auto</span>
               </span>
             ) : (
               <button 
                 onClick={restartDemo}
                 className="text-cyan-400 hover:underline"
               >
-                ↻ Replay demo
+                ↻ <span className="hidden sm:inline">Replay demo</span><span className="sm:hidden">Replay</span>
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="text-red-400">Chaos</span>
             <div 
-              className="w-3 h-3 rounded-full bg-red-400 transition-all duration-300"
+              className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400 transition-all duration-300"
               style={{ 
                 boxShadow: chaosIntensity > 0.5 ? '0 0 10px rgba(239, 68, 68, 0.8)' : 'none',
                 opacity: 0.5 + (chaosIntensity * 0.5)
@@ -378,17 +380,17 @@ function ChaosSignalSlider() {
       </div>
       
       {/* Two views side by side on larger screens, stacked on mobile */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="relative">
           <motion.div 
-            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-xs text-cyan-400 z-10 flex items-center gap-2 transition-all duration-300"
+            className="absolute -top-3 left-3 sm:left-4 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-[10px] sm:text-xs text-cyan-400 z-10 flex items-center gap-1.5 sm:gap-2 transition-all duration-300"
             style={{ 
               opacity: 0.4 + (signalIntensity * 0.6),
               boxShadow: signalIntensity > 0.5 ? '0 0 10px rgba(34, 211, 238, 0.3)' : 'none'
             }}
           >
             <span 
-              className="w-2 h-2 rounded-full bg-cyan-400 transition-all duration-300" 
+              className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 transition-all duration-300" 
               style={{ opacity: signalIntensity }} 
             />
             EagleEye
@@ -397,17 +399,18 @@ function ChaosSignalSlider() {
         </div>
         <div className="relative">
           <motion.div 
-            className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-xs text-red-400 z-10 flex items-center gap-2 transition-all duration-300"
+            className="absolute -top-3 left-3 sm:left-4 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 text-[10px] sm:text-xs text-red-400 z-10 flex items-center gap-1.5 sm:gap-2 transition-all duration-300"
             style={{ 
               opacity: 0.4 + (chaosIntensity * 0.6),
               boxShadow: chaosIntensity > 0.5 ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
             }}
           >
             <span 
-              className="w-2 h-2 rounded-full bg-red-400 transition-all duration-300" 
+              className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-400 transition-all duration-300" 
               style={{ opacity: chaosIntensity }} 
             />
-            Without EagleEye
+            <span className="hidden sm:inline">Without EagleEye</span>
+            <span className="sm:hidden">Without</span>
           </motion.div>
           <ChaosWall intensity={chaosIntensity} />
         </div>
@@ -415,11 +418,11 @@ function ChaosSignalSlider() {
     </div>
   )
 }
-// Primary CTA button - matches brand cyan
+// Primary CTA button - matches brand cyan (mobile responsive)
 function PrimaryButton({ children, href, size = 'default' }: { children: React.ReactNode; href: string; size?: 'default' | 'large' }) {
   const sizeClasses = size === 'large' 
-    ? 'px-10 py-5 text-lg' 
-    : 'px-8 py-4 text-base'
+    ? 'px-6 py-3.5 sm:px-10 sm:py-5 text-sm sm:text-lg' 
+    : 'px-5 py-3 sm:px-8 sm:py-4 text-sm sm:text-base'
   
   return (
     <Link href={href}>
@@ -433,7 +436,7 @@ function PrimaryButton({ children, href, size = 'default' }: { children: React.R
         }}
       >
         {children}
-        <ArrowRight className="h-5 w-5" />
+        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
       </motion.button>
     </Link>
   )
@@ -531,19 +534,39 @@ export default function Home() {
           scrolled ? 'bg-[#0D1117]/95 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
         }`}
       >
-        <nav className="max-w-[1400px] mx-auto px-6 lg:px-12 h-20 flex items-center justify-between">
-          <Logo size="lg" showText={true} showTagline={false} animated={true} variant="glow" />
-          <div className="flex items-center gap-6">
+        <nav className="max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 h-14 sm:h-20 flex items-center justify-between">
+          {/* Logo - smaller on mobile */}
+          <div className="flex-shrink-0">
+            <div className="hidden sm:block">
+              <Logo size="md" showText={true} showTagline={false} animated={true} variant="glow" />
+            </div>
+            <div className="sm:hidden">
+              <Logo size="xs" showText={true} showTagline={false} animated={false} variant="default" />
+            </div>
+          </div>
+          
+          {/* Nav items */}
+          <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">
             <Link href="/pricing" className="text-sm text-white/70 hover:text-white transition-colors hidden sm:block">
               Pricing
             </Link>
-            <Link href="/login" className="text-sm text-white/70 hover:text-white transition-colors">
+            <Link href="/login" className="text-xs sm:text-sm text-white/70 hover:text-white transition-colors whitespace-nowrap">
               Sign in
             </Link>
-            <PrimaryButton href="/signup?plan=founder">
-              <span className="hidden sm:inline">Start Free Trial</span>
-              <span className="sm:hidden">Start Free</span>
-            </PrimaryButton>
+            <Link href="/signup?plan=founder">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-3 py-1.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl text-[#0D1117] transition-all flex items-center gap-1 sm:gap-2 whitespace-nowrap"
+                style={{
+                  background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 50%, ${COLORS.primaryDark} 100%)`,
+                }}
+              >
+                <span className="hidden sm:inline">Start Free Trial</span>
+                <span className="sm:hidden">Start Free</span>
+                <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+              </motion.button>
+            </Link>
           </div>
         </nav>
       </motion.header>
@@ -552,15 +575,15 @@ export default function Home() {
         {/* ============================================ */}
         {/* HERO: "Own the Signal. Master the Chaos." */}
         {/* ============================================ */}
-        <section className="pt-32 pb-20 px-6 lg:px-16 relative">
-          <div className="max-w-[1400px] mx-auto text-center">
+        <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-12 xl:px-20 relative">
+          <div className="max-w-[1800px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               {/* Premium headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black mb-6 leading-tight tracking-tight">
+              <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black mb-4 sm:mb-6 leading-tight tracking-tight">
                 <span className="text-white">Own the Signal.</span>
                 <br />
                 <span 
@@ -578,7 +601,7 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="text-lg sm:text-xl text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed"
+                className="text-base sm:text-xl text-white/70 max-w-4xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2"
               >
                 While your competitors are drowning in 1,000+ notifications, you're already making the winning move. 
                 EagleEye filters the noise of WhatsApp, Slack, and Jira into the 
@@ -591,7 +614,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8"
+                className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-6 sm:mb-8"
               >
                 <PrimaryButton href="/signup?plan=founder" size="large">
                   Start Your Free Trial
@@ -603,7 +626,7 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
-                className="flex flex-wrap justify-center gap-6 text-sm text-white/50"
+                className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/50"
               >
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-cyan-400" />
@@ -625,19 +648,19 @@ export default function Home() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9, duration: 0.6 }}
-              className="mt-16 max-w-md mx-auto"
+              className="mt-10 sm:mt-16 max-w-md mx-auto px-2"
             >
-              <div className="p-4 rounded-2xl bg-white/5 border border-cyan-500/30 backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-white" />
+              <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-cyan-500/30 backdrop-blur-sm">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                    <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-xs text-white/50">Your Morning Brief</p>
-                    <p className="text-sm font-semibold text-white">3 signals need attention</p>
+                  <div className="min-w-0">
+                    <p className="text-[10px] sm:text-xs text-white/50">Your Morning Brief</p>
+                    <p className="text-xs sm:text-sm font-semibold text-white truncate">3 signals need attention</p>
                   </div>
-                  <div className="ml-auto">
-                    <span className="text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400">5 min read</span>
+                  <div className="ml-auto flex-shrink-0">
+                    <span className="text-[10px] sm:text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 whitespace-nowrap">5 min read</span>
                   </div>
                 </div>
               </div>
@@ -648,18 +671,18 @@ export default function Home() {
         {/* ============================================ */}
         {/* NIGHTMARE SECTION: "The 650-Hour Tax" */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-12 relative">
-          <div className="max-w-[1100px] mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20 relative">
+          <div className="max-w-[1600px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-12"
+              className="text-center mb-8 sm:mb-12"
             >
-              <h2 className="text-3xl sm:text-5xl font-black mb-6">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black mb-4 sm:mb-6">
                 The <span className="text-red-400">650-Hour</span> Tax
               </h2>
-              <p className="text-lg text-white/60 max-w-2xl mx-auto">
+              <p className="text-sm sm:text-lg text-white/60 max-w-2xl mx-auto px-2">
                 The average leader loses 650 hours a year to "scrolling hell." 
                 Searching for that one urgent WhatsApp message. Missing the Slack escalation. 
                 Checking Jira for the fifth time. 
@@ -681,23 +704,23 @@ export default function Home() {
         {/* ============================================ */}
         {/* THE "BIG THREE" FEATURES */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-12 bg-white/[0.02]">
-          <div className="max-w-[1100px] mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20 bg-white/[0.02]">
+          <div className="max-w-[1600px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-16"
+              className="text-center mb-10 sm:mb-16"
             >
-              <h2 className="text-3xl sm:text-5xl font-black mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black mb-4">
                 A <span className="text-cyan-400">'God-View'</span> for Your Business
               </h2>
-              <p className="text-white/60">
+              <p className="text-white/60 text-sm sm:text-base">
                 Three capabilities that change everything.
               </p>
             </motion.div>
             
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[
                 { 
                   icon: '🚨',
@@ -724,16 +747,16 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.15 }}
-                  className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all group"
+                  className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all group"
                 >
                   <div 
-                    className="text-4xl mb-4 w-14 h-14 rounded-xl flex items-center justify-center"
+                    className="text-3xl sm:text-4xl mb-3 sm:mb-4 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: `${feature.accent}15` }}
                   >
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-bold mb-3" style={{ color: feature.accent }}>{feature.title}</h3>
-                  <p className="text-white/60 leading-relaxed">{feature.desc}</p>
+                  <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3" style={{ color: feature.accent }}>{feature.title}</h3>
+                  <p className="text-white/60 leading-relaxed text-sm sm:text-base">{feature.desc}</p>
                 </motion.div>
               ))}
             </div>
@@ -743,28 +766,28 @@ export default function Home() {
         {/* ============================================ */}
         {/* FORT KNOX SECTION: Security & Trust */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-16">
-          <div className="max-w-[1100px] mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20">
+          <div className="max-w-[1600px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-12"
+              className="text-center mb-10 sm:mb-12"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 mb-6">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 mb-4 sm:mb-6">
                 <Shield className="h-4 w-4 text-green-400" />
-                <span className="text-green-400 text-sm font-medium">Enterprise-Grade Security</span>
+                <span className="text-green-400 text-xs sm:text-sm font-medium">Enterprise-Grade Security</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-black mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-4">
                 Your Data is Your Business. <span className="text-green-400">Period.</span>
               </h2>
-              <p className="text-white/60 max-w-xl mx-auto">
+              <p className="text-white/60 max-w-xl mx-auto text-sm sm:text-base px-2">
                 Built for the Boardroom. We use Read-Only access. We never post. We never store raw data.
                 We see the signal; we ignore the rest.
               </p>
             </motion.div>
             
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
                 { icon: '🔒', label: 'Read-Only Access', desc: 'We observe, never act' },
                 { icon: '🛡️', label: 'AES-256 Encryption', desc: 'Bank-level security' },
@@ -777,11 +800,11 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10 text-center"
+                  className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 text-center"
                 >
-                  <div className="text-2xl mb-2">{item.icon}</div>
-                  <p className="font-semibold text-sm mb-1">{item.label}</p>
-                  <p className="text-xs text-white/50">{item.desc}</p>
+                  <div className="text-xl sm:text-2xl mb-2">{item.icon}</div>
+                  <p className="font-semibold text-xs sm:text-sm mb-1">{item.label}</p>
+                  <p className="text-[10px] sm:text-xs text-white/50">{item.desc}</p>
                 </motion.div>
               ))}
             </div>
@@ -791,53 +814,53 @@ export default function Home() {
         {/* ============================================ */}
         {/* FOMO PRICING SECTION */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-16 bg-white/[0.02]">
-          <div className="max-w-[1000px] mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20 bg-white/[0.02]">
+          <div className="max-w-[1400px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-12"
+              className="text-center mb-10 sm:mb-12"
             >
-              <h2 className="text-3xl sm:text-4xl font-black mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-4">
                 Buy Back Your <span className="text-cyan-400">Time</span>
               </h2>
-              <p className="text-white/60">
+              <p className="text-white/60 text-sm sm:text-base">
                 Two simple plans. No hidden fees. Cancel anytime.
               </p>
             </motion.div>
             
-            <div className="grid md:grid-cols-2 gap-8 max-w-[900px] mx-auto">
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-8 max-w-[900px] mx-auto">
               {/* Solo Plan */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="p-6 rounded-2xl bg-white/5 border border-white/10"
+                className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 rounded-lg bg-white/10">
                     <Crown className="h-5 w-5 text-white/70" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">Solo</h3>
+                    <h3 className="font-bold text-base sm:text-lg">Solo</h3>
                     <p className="text-xs text-white/50">For individual professionals</p>
                   </div>
                 </div>
-                <div className="mb-6">
-                  <span className="text-4xl font-black">$29</span>
+                <div className="mb-4 sm:mb-6">
+                  <span className="text-3xl sm:text-4xl font-black">$29</span>
                   <span className="text-white/50">/month</span>
                 </div>
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                   {['10 tools connected', 'Daily morning brief', 'Email & push alerts', '90-day history'].map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-white/70">
-                      <Check className="h-4 w-4 text-green-400" />
+                    <li key={i} className="flex items-center gap-2 text-xs sm:text-sm text-white/70">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Link href="/signup?plan=founder" className="block">
-                  <button className="w-full py-3 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/5 transition-colors">
+                  <button className="w-full py-2.5 sm:py-3 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/5 transition-colors text-sm sm:text-base">
                     Start 7-Day Free Trial
                   </button>
                 </Link>
@@ -849,7 +872,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="p-6 rounded-2xl border-2 relative"
+                className="p-4 sm:p-6 rounded-2xl border-2 relative"
                 style={{ 
                   borderColor: '#22D3EE',
                   background: 'linear-gradient(135deg, rgba(34,211,238,0.08) 0%, transparent 50%)'
@@ -857,7 +880,7 @@ export default function Home() {
               >
                 {/* Popular badge */}
                 <div 
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold bg-cyan-400 text-gray-900"
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1 rounded-full text-xs font-bold bg-cyan-400 text-gray-900"
                 >
                   MOST POPULAR
                 </div>
@@ -867,15 +890,15 @@ export default function Home() {
                     <Zap className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">Team</h3>
+                    <h3 className="font-bold text-base sm:text-lg">Team</h3>
                     <p className="text-xs text-white/50">For teams up to 5</p>
                   </div>
                 </div>
-                <div className="mb-6">
-                  <span className="text-4xl font-black text-cyan-400">$79</span>
+                <div className="mb-4 sm:mb-6">
+                  <span className="text-3xl sm:text-4xl font-black text-cyan-400">$79</span>
                   <span className="text-white/50">/month</span>
                 </div>
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                   {[
                     'Everything in Solo',
                     'Up to 5 team members',
@@ -883,8 +906,8 @@ export default function Home() {
                     'Priority support',
                     'Unlimited history'
                   ].map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-white/70">
-                      <Check className="h-4 w-4 text-cyan-400" />
+                    <li key={i} className="flex items-center gap-2 text-xs sm:text-sm text-white/70">
+                      <Check className="h-4 w-4 text-cyan-400 flex-shrink-0" />
                       {f}
                     </li>
                   ))}
@@ -895,7 +918,7 @@ export default function Home() {
               </motion.div>
             </div>
             
-            <p className="text-center text-sm text-white/40 mt-8">
+            <p className="text-center text-xs sm:text-sm text-white/40 mt-6 sm:mt-8">
               All plans include a 7-day free trial. No credit card required.
             </p>
           </div>
@@ -904,15 +927,15 @@ export default function Home() {
         {/* ============================================ */}
         {/* INTEGRATIONS */}
         {/* ============================================ */}
-        <section className="py-16 px-6 lg:px-12">
-          <div className="max-w-[1200px] mx-auto text-center">
+        <section className="py-12 sm:py-16 px-4 sm:px-6 lg:px-12 xl:px-20">
+          <div className="max-w-[1600px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-2xl font-bold mb-6">Connects to Your Entire Stack</h2>
-              <div className="flex flex-wrap justify-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Connects to Your Entire Stack</h2>
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
                 {integrations.map((tool, i) => (
                   <motion.div
                     key={tool.name}
@@ -920,7 +943,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm hover:border-white/20 transition-colors"
+                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-full text-xs sm:text-sm hover:border-white/20 transition-colors"
                   >
                     <span>{tool.icon}</span>
                     <span>{tool.name}</span>
@@ -931,7 +954,7 @@ export default function Home() {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: integrations.length * 0.05 }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm"
+                  className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-full text-xs sm:text-sm"
                 >
                   <span>+</span>
                   <span className="text-white/50">More coming</span>
@@ -944,30 +967,30 @@ export default function Home() {
         {/* ============================================ */}
         {/* THE COST OF CONTEXT SWITCHING */}
         {/* ============================================ */}
-        <section className="py-20 px-6 lg:px-12">
-          <div className="max-w-[1100px] mx-auto">
+        <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-12 xl:px-20">
+          <div className="max-w-[1600px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-10"
+              className="text-center mb-8 sm:mb-10"
             >
-              <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3">
                 The Hidden Cost of <span className="text-cyan-400">Always On</span>
               </h2>
-              <p className="text-white/50 text-sm">Research-backed insights on notification overload</p>
+              <p className="text-white/50 text-xs sm:text-sm">Research-backed insights on notification overload</p>
             </motion.div>
             
-            <div className="grid sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
+                className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
               >
-                <div className="text-4xl font-black text-red-400 mb-2">23 min</div>
-                <p className="text-sm text-white/70 mb-2">to refocus after an interruption</p>
-                <p className="text-xs text-white/40">UC Irvine Research Study</p>
+                <div className="text-3xl sm:text-4xl font-black text-red-400 mb-2">23 min</div>
+                <p className="text-xs sm:text-sm text-white/70 mb-2">to refocus after an interruption</p>
+                <p className="text-[10px] sm:text-xs text-white/40">UC Irvine Research Study</p>
               </motion.div>
               
               <motion.div
@@ -975,11 +998,11 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
+                className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
               >
-                <div className="text-4xl font-black text-amber-400 mb-2">74%</div>
-                <p className="text-sm text-white/70 mb-2">of workers feel overwhelmed by notifications</p>
-                <p className="text-xs text-white/40">Workfront State of Work Report</p>
+                <div className="text-3xl sm:text-4xl font-black text-amber-400 mb-2">74%</div>
+                <p className="text-xs sm:text-sm text-white/70 mb-2">of workers feel overwhelmed by notifications</p>
+                <p className="text-[10px] sm:text-xs text-white/40">Workfront State of Work Report</p>
               </motion.div>
               
               <motion.div
@@ -987,11 +1010,11 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 }}
-                className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
+                className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 text-center"
               >
-                <div className="text-4xl font-black text-cyan-400 mb-2">2.5 hrs</div>
-                <p className="text-sm text-white/70 mb-2">average daily time lost to context switching</p>
-                <p className="text-xs text-white/40">RescueTime Productivity Study</p>
+                <div className="text-3xl sm:text-4xl font-black text-cyan-400 mb-2">2.5 hrs</div>
+                <p className="text-xs sm:text-sm text-white/70 mb-2">average daily time lost to context switching</p>
+                <p className="text-[10px] sm:text-xs text-white/40">RescueTime Productivity Study</p>
               </motion.div>
             </div>
             
@@ -999,7 +1022,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-center text-white/50 text-sm mt-8 max-w-lg mx-auto"
+              className="text-center text-white/50 text-xs sm:text-sm mt-6 sm:mt-8 max-w-lg mx-auto px-2"
             >
               EagleEye eliminates the noise so you can focus on what matters. 
               One brief, once a day, everything you need to know.
@@ -1010,26 +1033,26 @@ export default function Home() {
         {/* ============================================ */}
         {/* FAQ / OBJECTION BUSTERS */}
         {/* ============================================ */}
-        <section className="py-20 px-6 lg:px-12 bg-white/[0.02]">
-          <div className="max-w-[900px] mx-auto">
+        <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-12 xl:px-20 bg-white/[0.02]">
+          <div className="max-w-[1200px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-10"
+              className="text-center mb-8 sm:mb-10"
             >
-              <h2 className="text-2xl sm:text-3xl font-bold">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
                 Common Questions
               </h2>
             </motion.div>
             
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <ObjectionAccordion
                 icon="🤔"
                 title="What if I miss something important?"
                 preview="EagleEye catches what humans miss"
               >
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-white/60 text-xs sm:text-sm leading-relaxed">
                   That fear is why you check compulsively. Here's the paradox: when you try to monitor 500 messages yourself, you're more likely to miss things. EagleEye never sleeps, never gets tired, and surfaces urgency instantly via push notifications.
                 </p>
               </ObjectionAccordion>
@@ -1039,7 +1062,7 @@ export default function Home() {
                 title="What about weekends and vacations?"
                 preview="Enjoy your time off. If it's urgent, you'll know."
               >
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-white/60 text-xs sm:text-sm leading-relaxed">
                   EagleEye knows the difference between "need to know now" and "can wait until Monday." On weekends, you get a 2-line summary. On vacation, a 30-second brief. If the office is on fire, you'll know.
                 </p>
               </ObjectionAccordion>
@@ -1049,7 +1072,7 @@ export default function Home() {
                 title="Does it work on mobile?"
                 preview="No app needed. Works on any device."
               >
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-white/60 text-xs sm:text-sm leading-relaxed">
                   EagleEye is a web app. Add it to your home screen, enable push notifications, and forget about it. No battery drain, no storage used. Works on iPhone, Android, iPad, or desktop.
                 </p>
               </ObjectionAccordion>
@@ -1059,7 +1082,7 @@ export default function Home() {
                 title="How fast is setup?"
                 preview="2 minutes. Connect and go."
               >
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-white/60 text-xs sm:text-sm leading-relaxed">
                   OAuth connections mean one-click authorization. Connect Slack, WhatsApp Business, Asana, Jira—all in under 2 minutes. Your first brief arrives within 24 hours.
                 </p>
               </ObjectionAccordion>
@@ -1070,13 +1093,13 @@ export default function Home() {
         {/* ============================================ */}
         {/* FINAL CTA */}
         {/* ============================================ */}
-        <section className="py-24 px-6 lg:px-12">
-          <div className="max-w-[900px] mx-auto text-center">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20">
+          <div className="max-w-[1200px] mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="p-10 rounded-3xl border relative overflow-hidden"
+              className="p-6 sm:p-10 rounded-3xl border relative overflow-hidden"
               style={{ 
                 borderColor: 'rgba(34,211,238,0.4)',
                 background: 'linear-gradient(135deg, rgba(34,211,238,0.08) 0%, rgba(59,130,246,0.08) 100%)'
@@ -1087,10 +1110,10 @@ export default function Home() {
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[150px] rounded-full blur-[80px] opacity-30 bg-cyan-400"
               />
               
-              <h2 className="text-3xl sm:text-4xl font-black mb-4 relative z-10">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-3 sm:mb-4 relative z-10">
                 Tomorrow's 1,000 pings are coming.
               </h2>
-              <p className="text-lg text-white/60 mb-8 relative z-10">
+              <p className="text-sm sm:text-lg text-white/60 mb-6 sm:mb-8 relative z-10 px-2">
                 Start your 7-day free trial. See what you've been missing.
               </p>
               
@@ -1100,7 +1123,7 @@ export default function Home() {
                 </PrimaryButton>
               </div>
               
-              <p className="text-sm text-white/40 mt-6 relative z-10">
+              <p className="text-xs sm:text-sm text-white/40 mt-4 sm:mt-6 relative z-10">
                 No credit card required • Cancel anytime • $29/month after trial
               </p>
             </motion.div>
@@ -1112,18 +1135,18 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6 lg:px-12 bg-[#0a0a0a]">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+      <footer className="border-t border-white/10 py-8 sm:py-12 px-4 sm:px-6 lg:px-12 xl:px-20 bg-[#0a0a0a]">
+        <div className="max-w-[1800px] mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
             <Logo size="md" animated={false} />
-            <div className="flex items-center gap-8 text-sm text-white/50">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-white/50">
               <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
               <a href="mailto:hello@eagleeye.work" className="hover:text-white transition-colors">Contact</a>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-white/10 text-center text-sm text-white/40">
+          <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10 text-center text-xs sm:text-sm text-white/40">
             © {new Date().getFullYear()} EagleEye. Own the Signal. Master the Chaos.
           </div>
         </div>

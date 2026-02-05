@@ -1,0 +1,17 @@
+{
+  "name": "EagleEye",
+  "short_name": "EagleEye",
+  "description": "Own the Signal. Master the Chaos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#22D3EE",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

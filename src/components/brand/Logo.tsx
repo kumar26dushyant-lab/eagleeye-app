@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 interface LogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'hero'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero'
   showText?: boolean
   animated?: boolean
   href?: string
@@ -14,6 +14,7 @@ interface LogoProps {
 }
 
 const sizes = {
+  xs: { icon: 24, text: 'text-base', tagline: 'text-[7px]', gap: 'gap-1.5' },
   sm: { icon: 28, text: 'text-lg', tagline: 'text-[8px]', gap: 'gap-2' },
   md: { icon: 36, text: 'text-xl', tagline: 'text-[9px]', gap: 'gap-2.5' },
   lg: { icon: 48, text: 'text-2xl', tagline: 'text-[10px]', gap: 'gap-3' },
