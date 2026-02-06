@@ -132,7 +132,7 @@ function SuccessContent() {
               </div>
             </motion.div>
 
-            {/* Email Reminder Box */}
+            {/* Email Reminder Box - CRITICAL NOTICE */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -142,9 +142,9 @@ function SuccessContent() {
               <div className="flex items-start gap-3">
                 <Mail className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium text-amber-400">Check your inbox now</p>
+                  <p className="font-medium text-amber-400">⚠️ IMPORTANT: Confirm your email first!</p>
                   <p className="text-muted-foreground mt-1">
-                    Click the confirmation link to activate your account. Check spam folder if you don't see it.
+                    <strong>You must click the confirmation link in your email before you can log in.</strong> Check your spam/junk folder if you don't see it within 2 minutes.
                   </p>
                 </div>
               </div>
@@ -159,12 +159,15 @@ function SuccessContent() {
             >
               <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="w-full gap-2">
-                  Open Gmail
+                  Open Gmail to Confirm Email
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </a>
+              <p className="text-xs text-center text-muted-foreground">
+                Not using Gmail? Check your email inbox for a message from EagleEye
+              </p>
               <Link href="/login">
-                <Button size="lg" variant="outline" className="w-full gap-2">
+                <Button size="lg" variant="ghost" className="w-full gap-2 text-muted-foreground">
                   Already confirmed? Login
                   <ArrowRight className="h-4 w-4" />
                 </Button>
