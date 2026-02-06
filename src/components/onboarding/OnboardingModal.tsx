@@ -14,7 +14,8 @@ import {
   Shield,
   Clock,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -211,6 +212,17 @@ export function OnboardingModal({ isOpen, onComplete, userName }: OnboardingModa
                     <p className="text-muted-foreground mb-6">{step.description}</p>
                     
                     <div className="space-y-3 mb-6">
+                      <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <div className="w-10 h-10 rounded-lg bg-[#25D366] flex items-center justify-center">
+                          <MessageSquare className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">WhatsApp Business</p>
+                          <p className="text-xs text-muted-foreground">Client messages, urgent requests</p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      
                       <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50">
                         <div className="w-10 h-10 rounded-lg bg-[#4A154B] flex items-center justify-center">
                           <Slack className="w-5 h-5 text-white" />

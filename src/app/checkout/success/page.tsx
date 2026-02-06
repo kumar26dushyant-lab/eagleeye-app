@@ -197,7 +197,7 @@ function SuccessContent() {
               Your payment is being processed. This usually takes a few seconds.
             </p>
 
-            <Link href="/login">
+            <Link href="/login?message=confirm-email">
               <Button size="lg" variant="outline" className="gap-2">
                 Go to Login
                 <ArrowRight className="h-4 w-4" />
