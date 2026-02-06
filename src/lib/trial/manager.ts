@@ -125,15 +125,20 @@ export async function getTrialStatus(userId: string): Promise<TrialStatus> {
     }
   }
 
-  // Trialing status
+  // Trialing status (includes paid trials with payment method registered)
   if (subscription.status === 'trialing') {
+    // Check if they have a payment method registered (Dodo subscription)
+    const hasPaymentRegistered = !!subscription.dodo_subscription_id || !!subscription.dodo_customer_id
+    
     return {
       isActive: daysLeft > 0, // Only active if days remain
-      isPaid: false,
+      isPaid: false, // Not charged yet
       daysLeft,
       trialEndsAt: endsAt,
-      tier: 'trial',
-      hasPaymentMethod: hasActiveSubscription,
+      tier: 'trial' as const, // Always show as trial during trial period
+      hasPaymentMethod: hasPaymentRegistered,
+      // For display purposes - shows they're in trial but will auto-convert
+      pendingTier: hasPaymentRegistered ? (subscription.tier as 'founder' | 'team') : null,
     }
   }
 

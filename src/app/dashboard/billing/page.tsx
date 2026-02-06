@@ -279,7 +279,10 @@ function BillingContent() {
                       : `${trialStatus.daysLeft} days remaining`}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  Your 7-day free trial • Auto-renews to Solo plan at $29/month
+                  {trialStatus.hasPaymentMethod 
+                    ? `Your 7-day free trial • Auto-renews to ${trialStatus.pendingTier === 'team' ? 'Team ($79/mo)' : 'Solo ($29/mo)'}`
+                    : 'Your 7-day free trial • Add payment method to continue after trial'
+                  }
                 </span>
               </div>
             </div>
@@ -300,8 +303,8 @@ function BillingContent() {
           </div>
           {trialStatus.trialEndsAt && (
             <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
-              Trial started on {new Date(new Date(trialStatus.trialEndsAt).getTime() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString()} • 
-              Ends on {new Date(trialStatus.trialEndsAt).toLocaleDateString()} • 
+              {trialStatus.hasPaymentMethod && '✓ Payment method registered • '}
+              Trial ends on {new Date(trialStatus.trialEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • 
               Cancel anytime before to avoid charges
             </p>
           )}

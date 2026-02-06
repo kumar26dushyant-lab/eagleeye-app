@@ -192,6 +192,13 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
   }
   
   if (existingId) {
+    // Determine if this is a trial signup ($0) or actual payment
+    // For trial signups, keep status as 'trialing' until first real charge
+    const isTrialSignup = !amount || amount === 0;
+    const trialEndsAt = isTrialSignup 
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+      : null;
+    
     // Update existing subscription - clear any payment failure flags
     const { error } = await supabase
       .from('subscriptions')
@@ -202,7 +209,12 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
         dodo_subscription_id: subscriptionId,
         dodo_payment_id: paymentId,
         tier: tier,
-        status: 'active',
+        status: isTrialSignup ? 'trialing' : 'active', // Keep trialing for $0 payments
+        // Set trial dates for trial signups
+        ...(isTrialSignup && {
+          trial_started_at: new Date().toISOString(),
+          trial_ends_at: trialEndsAt,
+        }),
         // Clear payment failure fields on successful payment
         payment_failed_at: null,
         grace_period_ends_at: null,
@@ -267,6 +279,13 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
     }
   } else {
     // Create new subscription
+    // Determine if this is a trial signup ($0) or actual payment
+    const isTrialSignup = !amount || amount === 0;
+    const now = new Date();
+    const trialEndsAt = isTrialSignup 
+      ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+      : null;
+    
     const { error } = await supabase
       .from('subscriptions')
       .insert({
@@ -277,9 +296,11 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
         dodo_payment_id: paymentId,
         product_id: productId,
         tier: tier,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        status: isTrialSignup ? 'trialing' : 'active', // Keep trialing for $0 payments
+        trial_started_at: isTrialSignup ? now.toISOString() : null,
+        trial_ends_at: trialEndsAt,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
       });
     
     if (error) {
