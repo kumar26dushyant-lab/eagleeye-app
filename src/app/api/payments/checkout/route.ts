@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     const returnUrl = reactivation 
       ? `${baseUrl}/dashboard?reactivated=true`
       : `${baseUrl}/checkout/success?tier=${tier}`
+    const cancelUrl = `${baseUrl}/checkout/failed?tier=${tier}`
 
     // Don't pre-fill name - let user enter it on checkout page
     // This allows them to edit both name and email if needed

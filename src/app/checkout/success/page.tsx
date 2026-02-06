@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { CheckCircle, ArrowRight, Loader2, Mail, Bell, Plug, ExternalLink } from 'lucide-react'
@@ -9,8 +9,18 @@ import { Button } from '@/components/ui/button'
 
 function SuccessContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const paymentId = searchParams.get('payment_id')
   const status = searchParams.get('status')
+  const error = searchParams.get('error')
+  const tier = searchParams.get('tier') || 'solo'
+
+  // Redirect to failed page if payment failed
+  useEffect(() => {
+    if (status === 'failed' || status === 'cancelled' || error) {
+      router.replace(`/checkout/failed?tier=${tier}${error ? `&error=${encodeURIComponent(error)}` : ''}`)
+    }
+  }, [status, error, tier, router])
 
   const steps = [
     { 
