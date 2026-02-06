@@ -40,7 +40,7 @@ export async function sendWelcomeEmail(data: ReminderData): Promise<boolean> {
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; background: #0a0a0a; color: #fafafa;">
           <div style="text-align: center; margin-bottom: 32px;">
-            <span style="font-size: 32px;">🦅</span>
+            <img src="https://eagleeye.work/icon-512.png" alt="EagleEye" width="64" height="64" style="display: block; margin: 0 auto 12px auto; border-radius: 12px;" />
             <h1 style="color: #fafafa; margin: 16px 0 0 0; font-size: 24px;">Welcome to EagleEye!</h1>
           </div>
           

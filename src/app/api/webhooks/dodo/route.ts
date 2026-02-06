@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handlePaymentSucceeded(supabase: any, data: any) {
-  console.log("[Dodo Webhook] Payment succeeded:", data);
+  console.log("[Dodo Webhook] Payment succeeded - FULL DATA:", JSON.stringify(data, null, 2));
   
   const customerId = data.customer?.customer_id;
   const customerEmail = data.customer?.email?.toLowerCase();
@@ -122,9 +122,28 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
   const subscriptionId = data.subscription_id;
   const productId = data.product_id;
   const paymentId = data.payment_id;
+  const paymentStatus = data.status || data.payment_status;
+  const amount = data.amount || data.total_amount;
+  
+  // Log key payment details
+  console.log("[Dodo Webhook] Payment details:", { 
+    email: customerEmail, 
+    paymentId, 
+    subscriptionId,
+    status: paymentStatus,
+    amount,
+    productId 
+  });
   
   if (!customerEmail) {
     console.error("[Dodo Webhook] No customer email in payment data");
+    return;
+  }
+  
+  // SAFEGUARD: Skip processing if this looks like a mandate verification (₹1 test)
+  // Real subscription payments should be for the actual amount ($29/$79)
+  if (amount && (amount === 1 || amount === 100)) { // 1 INR or 100 paise
+    console.log("[Dodo Webhook] Skipping - appears to be ₹1 mandate verification, not actual payment");
     return;
   }
   

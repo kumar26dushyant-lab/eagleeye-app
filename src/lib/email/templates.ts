@@ -1,6 +1,9 @@
 // Professional Email Templates for EagleEye
 // All transactional emails sent via Resend
 
+// Logo URL - hosted on our domain
+const LOGO_URL = 'https://eagleeye.work/icon-512.png';
+
 export const emailStyles = {
   container: `
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -134,7 +137,8 @@ function baseTemplate(content: string): string {
     <body style="margin: 0; padding: 20px; background: #000;">
       <div style="${emailStyles.container}">
         <div style="${emailStyles.header}">
-          <h1 style="${emailStyles.logo}">🦅 EagleEye</h1>
+          <img src="${LOGO_URL}" alt="EagleEye" width="64" height="64" style="display: block; margin: 0 auto 12px auto; border-radius: 12px;" />
+          <h1 style="${emailStyles.logo}">EagleEye</h1>
           <p style="${emailStyles.tagline}">Own the Signal. Master the Chaos.</p>
         </div>
         <div style="${emailStyles.body}">
