@@ -608,8 +608,8 @@ export default function Home() {
                 className="text-base sm:text-xl text-white/70 max-w-4xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2"
               >
                 While your competitors are drowning in 1,000+ notifications, you're already making the winning move. 
-                EagleEye filters the noise of WhatsApp, Slack, and Jira into the 
-                <span className="text-cyan-400"> 3 critical priorities</span> that actually matter.
+                EagleEye filters the noise of WhatsApp, Slack, and Jira into
+                <span className="text-cyan-400"> the critical priorities</span> that actually matter.
                 <span className="block mt-2 text-white font-medium">Be the leader who knows first.</span>
               </motion.p>
               
@@ -895,7 +895,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="font-bold text-base sm:text-lg">Team</h3>
-                    <p className="text-xs text-white/50">For teams up to 5</p>
+                    <p className="text-xs text-white/50">For growing teams</p>
                   </div>
                 </div>
                 <div className="mb-4 sm:mb-6">
@@ -905,7 +905,7 @@ export default function Home() {
                 <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                   {[
                     'Everything in Solo',
-                    'Up to 5 team members',
+                    'Up to 10 team members',
                     'Shared signal dashboard',
                     'Priority support',
                     'Unlimited history'

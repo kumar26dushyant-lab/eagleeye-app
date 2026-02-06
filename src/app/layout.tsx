@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "EagleEye - Own the Signal. Master the Chaos.",
-  description: "While your competitors drown in 1,000+ notifications, you're already making the winning move. EagleEye filters noise into the 3 critical priorities that matter.",
+  description: "While your competitors drown in 1,000+ notifications, you're already making the winning move. EagleEye filters noise into the critical priorities that matter.",
   manifest: '/manifest.json',
   icons: {
     icon: [
