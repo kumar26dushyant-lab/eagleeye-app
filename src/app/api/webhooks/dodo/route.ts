@@ -117,6 +117,8 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
   
   const customerId = data.customer?.customer_id;
   const customerEmail = data.customer?.email?.toLowerCase();
+  const customerPhone = data.customer?.phone_number || data.customer?.phone || null;
+  const customerName = data.customer?.name || null;
   const subscriptionId = data.subscription_id;
   const productId = data.product_id;
   const paymentId = data.payment_id;
@@ -124,6 +126,11 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
   if (!customerEmail) {
     console.error("[Dodo Webhook] No customer email in payment data");
     return;
+  }
+  
+  // Log phone number if provided
+  if (customerPhone) {
+    console.log("[Dodo Webhook] Customer phone provided:", customerPhone);
   }
   
   // Determine tier based on product
@@ -171,6 +178,7 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
       .from('subscriptions')
       .update({
         customer_email: customerEmail, // Ensure customer_email is set
+        customer_phone: customerPhone, // Store phone if provided
         dodo_customer_id: customerId,
         dodo_subscription_id: subscriptionId,
         dodo_payment_id: paymentId,
@@ -187,6 +195,28 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', existingId);  // Use ID for reliable update
+    
+    // Also update profile with phone and name if provided
+    if (customerPhone || customerName) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', customerEmail)
+        .single();
+      
+      if (profile) {
+        const profileUpdate: any = {};
+        if (customerPhone) profileUpdate.phone = customerPhone;
+        if (customerName && !profile.full_name) profileUpdate.full_name = customerName;
+        
+        if (Object.keys(profileUpdate).length > 0) {
+          await supabase
+            .from('profiles')
+            .update(profileUpdate)
+            .eq('id', profile.id);
+        }
+      }
+    }
     
     // Mark any unresolved payment failures as resolved
     await supabase
@@ -222,6 +252,7 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
       .from('subscriptions')
       .insert({
         customer_email: customerEmail,
+        customer_phone: customerPhone, // Store phone if provided
         dodo_customer_id: customerId,
         dodo_subscription_id: subscriptionId,
         dodo_payment_id: paymentId,
