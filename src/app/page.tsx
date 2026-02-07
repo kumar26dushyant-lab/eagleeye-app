@@ -1035,6 +1035,172 @@ export default function Home() {
         </section>
 
         {/* ============================================ */}
+        {/* ABOUT US / OUR STORY */}
+        {/* ============================================ */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-12 xl:px-20 relative overflow-hidden">
+          {/* Background Elements */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/4 left-0 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px]" />
+            <div className="absolute bottom-1/4 right-0 w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[100px]" />
+          </div>
+          
+          <div className="max-w-[1200px] mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12 sm:mb-16"
+            >
+              <span className="inline-block px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs sm:text-sm font-medium mb-4">
+                Our Story
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-4">
+                Why We Built <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">EagleEye</span>
+              </h2>
+              <p className="text-white/60 max-w-2xl mx-auto text-sm sm:text-base">
+                We were drowning in the same chaos. Then we decided to fix it.
+              </p>
+            </motion.div>
+
+            {/* Story Content */}
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mb-12 sm:mb-16">
+              {/* Left: The Story */}
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="space-y-6"
+              >
+                <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                      <span className="text-xl">😫</span>
+                    </div>
+                    <h3 className="font-bold text-lg">The Problem We Lived</h3>
+                  </div>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    We started as busy professionals juggling WhatsApp groups, Slack channels, Jira boards, and endless email threads. 
+                    Every morning began with anxiety: "What did I miss?" Every evening ended with guilt: "I was busy all day but got nothing important done."
+                  </p>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                      <span className="text-xl">💡</span>
+                    </div>
+                    <h3 className="font-bold text-lg">The Realization</h3>
+                  </div>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    The problem wasn't the tools—it was the signal-to-noise ratio. Out of 1,000 daily notifications, 
+                    only a handful actually needed immediate attention. The rest? Just noise disguised as urgency.
+                  </p>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                      <span className="text-xl">🦅</span>
+                    </div>
+                    <h3 className="font-bold text-lg">The Solution</h3>
+                  </div>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    We built EagleEye to be our own command center—an AI that reads everything and tells us only what matters. 
+                    No more FOMO. No more doom-scrolling. Just clarity, delivered once a day.
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Right: Mission & Values */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="lg:pl-8"
+              >
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-[#0D1117] to-[#161B22] border border-white/10 relative overflow-hidden">
+                  {/* Decorative glow */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 rounded-full blur-[60px]" />
+                  
+                  <h3 className="text-xl sm:text-2xl font-bold mb-6 relative z-10">Our Mission</h3>
+                  
+                  <blockquote className="text-lg sm:text-xl text-white/80 italic mb-8 relative z-10 leading-relaxed">
+                    "To give every professional the superpower of knowing exactly what needs their attention—without drowning in digital noise."
+                  </blockquote>
+
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Time is your most valuable asset</p>
+                        <p className="text-white/50 text-xs">We protect it by filtering the noise</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">AI should augment, not replace</p>
+                        <p className="text-white/50 text-xs">You make decisions, we surface signals</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Privacy is non-negotiable</p>
+                        <p className="text-white/50 text-xs">Your data is encrypted and never sold</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Built by users, for users</p>
+                        <p className="text-white/50 text-xs">We use EagleEye every single day</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Bottom Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+            >
+              <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">2026</div>
+                <p className="text-white/50 text-xs sm:text-sm">Founded</p>
+              </div>
+              <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">India</div>
+                <p className="text-white/50 text-xs sm:text-sm">Headquartered</p>
+              </div>
+              <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">7+</div>
+                <p className="text-white/50 text-xs sm:text-sm">Integrations</p>
+              </div>
+              <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">24/7</div>
+                <p className="text-white/50 text-xs sm:text-sm">AI Monitoring</p>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ============================================ */}
         {/* FAQ / OBJECTION BUSTERS */}
         {/* ============================================ */}
         <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-12 xl:px-20 bg-white/[0.02]">
