@@ -1099,8 +1099,8 @@ export default function Home() {
 
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                      <span className="text-xl">🦅</span>
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center overflow-hidden">
+                      <img src="/icon-192.png" alt="EagleEye" className="w-8 h-8 object-contain" />
                     </div>
                     <h3 className="font-bold text-lg">The Solution</h3>
                   </div>
@@ -1185,8 +1185,8 @@ export default function Home() {
                 <p className="text-white/50 text-xs sm:text-sm">Founded</p>
               </div>
               <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
-                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">India</div>
-                <p className="text-white/50 text-xs sm:text-sm">Headquartered</p>
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">Global</div>
+                <p className="text-white/50 text-xs sm:text-sm">Remote-First</p>
               </div>
               <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
                 <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">7+</div>
@@ -1194,7 +1194,7 @@ export default function Home() {
               </div>
               <div className="text-center p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
                 <div className="text-2xl sm:text-3xl font-black text-cyan-400 mb-1">24/7</div>
-                <p className="text-white/50 text-xs sm:text-sm">AI Monitoring</p>
+                <p className="text-white/50 text-xs sm:text-sm">Signal Intelligence</p>
               </div>
             </motion.div>
           </div>
