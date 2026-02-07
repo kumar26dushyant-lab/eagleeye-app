@@ -173,13 +173,28 @@ function SourceIcon({ source }: { source: string }) {
   )
 }
 
+// Get source action label
+function getSourceAction(source: string): { label: string; color: string } {
+  const actions: Record<string, { label: string; color: string }> = {
+    whatsapp: { label: 'Open in WhatsApp', color: 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' },
+    slack: { label: 'Reply in Slack', color: 'bg-[#4A154B]/20 text-[#E01E5A] hover:bg-[#4A154B]/30' },
+    jira: { label: 'View in Jira', color: 'bg-[#0052CC]/20 text-[#0052CC] hover:bg-[#0052CC]/30' },
+    email: { label: 'Open Email', color: 'bg-[#EA4335]/20 text-[#EA4335] hover:bg-[#EA4335]/30' },
+    asana: { label: 'Open in Asana', color: 'bg-[#F06A6A]/20 text-[#F06A6A] hover:bg-[#F06A6A]/30' },
+    teams: { label: 'Reply in Teams', color: 'bg-[#6264A7]/20 text-[#6264A7] hover:bg-[#6264A7]/30' },
+  }
+  return actions[source] || { label: 'Open', color: 'bg-muted hover:bg-muted/80' }
+}
+
 // Signal Card Component (matches real NeedsAttention component style)
 function SignalCard({ item }: { item: any }) {
+  const sourceAction = getSourceAction(item.source)
+  
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/50 transition-colors cursor-pointer group"
+      className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/50 transition-colors group"
     >
       <div className="flex gap-3">
         <SourceIcon source={item.source} />
@@ -193,9 +208,19 @@ function SignalCard({ item }: { item: any }) {
             <span className="text-xs text-muted-foreground">{formatRelativeTime(item.timestamp)}</span>
           </div>
           <h4 className="font-medium text-sm mb-1 group-hover:text-primary transition-colors">{item.title}</h4>
-          <p className="text-xs text-muted-foreground line-clamp-2">{item.summary}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{item.summary}</p>
+          
+          {/* Source Action Button */}
+          <a 
+            href={item.url} 
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sourceAction.color}`}
+          >
+            <ExternalLink className="w-3 h-3" />
+            {sourceAction.label}
+          </a>
         </div>
-        <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
       </div>
     </motion.div>
   )
