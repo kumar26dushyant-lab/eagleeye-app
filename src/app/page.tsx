@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Shield, Check, ChevronDown, Clock, Zap, Eye, Lock, Crown } from 'lucide-react'
+import { ArrowRight, Shield, Check, ChevronDown, Clock, Zap, Eye, Lock, Crown, Building2 } from 'lucide-react'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
@@ -830,11 +830,11 @@ export default function Home() {
                 Buy Back Your <span className="text-cyan-400">Time</span>
               </h2>
               <p className="text-white/60 text-sm sm:text-base">
-                Two simple plans. No hidden fees. Cancel anytime.
+                Simple pricing. No hidden fees. Cancel anytime.
               </p>
             </motion.div>
             
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-8 max-w-[900px] mx-auto">
+            <div className="grid md:grid-cols-3 gap-4 sm:gap-6 max-w-[1200px] mx-auto">
               {/* Solo Plan */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -919,6 +919,48 @@ export default function Home() {
                 <PrimaryButton href="/signup?plan=team">
                   Start 7-Day Free Trial
                 </PrimaryButton>
+              </motion.div>
+              
+              {/* Enterprise Plan */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-white/10">
+                    <Building2 className="h-5 w-5 text-white/70" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg">Enterprise</h3>
+                    <p className="text-xs text-white/50">For larger organizations</p>
+                  </div>
+                </div>
+                <div className="mb-4 sm:mb-6">
+                  <span className="text-3xl sm:text-4xl font-black">Custom</span>
+                </div>
+                <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                  {[
+                    'Everything in Team',
+                    'Unlimited team members',
+                    'SSO / SAML authentication',
+                    'Custom AI training',
+                    'On-premise deployment',
+                    'SLA available'
+                  ].map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs sm:text-sm text-white/70">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="mailto:hello@eagleeye.work?subject=Enterprise%20Inquiry" className="block">
+                  <button className="w-full py-2.5 sm:py-3 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/5 transition-colors text-sm sm:text-base flex items-center justify-center gap-2">
+                    Contact Us <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
               </motion.div>
             </div>
             
