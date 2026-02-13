@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendPaymentConfirmationEmail, sendSubscriptionCancelledEmail } from "@/lib/email";
-import { sendPaymentFailedEmail } from "@/lib/trial/emails";
+import { sendPaymentFailedEmail, sendWelcomeEmail as sendTrialWelcomeEmail } from "@/lib/trial/emails";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -308,15 +308,33 @@ async function handlePaymentSucceeded(supabase: any, data: any) {
     } else {
       console.log("[Dodo Webhook] Subscription created for:", customerEmail, "Tier:", tier);
       
-      // Send payment confirmation email
+      // Send appropriate email based on whether this is trial or paid
       try {
-        await sendPaymentConfirmationEmail({
-          to: customerEmail,
-          planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
-          amount: tier === 'team' ? '$79' : '$29',
-          loginLink: 'https://eagleeye.work/login',
-        });
-        console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);
+        if (isTrialSignup && trialEndsAt) {
+          // Trial signup - send trial welcome email
+          await sendTrialWelcomeEmail({
+            email: customerEmail,
+            name: customerName || 'there',
+            daysLeft: 7,
+            trialEndsAt: new Date(trialEndsAt),
+          });
+          console.log("[Dodo Webhook] Trial welcome email sent to:", customerEmail);
+          
+          // Mark welcome email as sent
+          await supabase
+            .from('subscriptions')
+            .update({ welcome_email_sent: true })
+            .eq('customer_email', customerEmail);
+        } else {
+          // Paid signup - send payment confirmation
+          await sendPaymentConfirmationEmail({
+            to: customerEmail,
+            planName: tier === 'team' ? 'Team' : 'Founder (Solo)',
+            amount: tier === 'team' ? '$79' : '$29',
+            loginLink: 'https://eagleeye.work/login',
+          });
+          console.log("[Dodo Webhook] Payment confirmation email sent to:", customerEmail);
+        }
       } catch (emailError) {
         console.error("[Dodo Webhook] Failed to send email:", emailError);
       }

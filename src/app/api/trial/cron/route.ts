@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   sendDay1Reminder,
+  sendDay3Reminder,
   sendTrialExpiredEmail,
 } from '@/lib/trial/emails'
 
@@ -9,6 +10,7 @@ import {
  * Trial reminder cron job
  * 
  * Call this endpoint daily to send trial reminders:
+ * - Day 4 (3 days left): "3 days left in your trial" reminder
  * - Day 6 (1 day left): "Tomorrow your card will be charged" reminder
  * - Day 8+: "Expired" email (if payment failed)
  * 
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const now = new Date()
     const results = {
+      day3Reminders: 0,  // Sent on day 4 (3 days left)
       day1Reminders: 0,  // Sent on day 6 (1 day left)
       expiredEmails: 0,
       errors: [] as string[],
@@ -63,7 +66,9 @@ export async function GET(request: NextRequest) {
 
     for (const sub of subscriptions) {
       try {
-        if (!sub.email || !sub.trial_ends_at) continue
+        // Use customer_email column (NOT email which doesn't exist)
+        const email = sub.customer_email
+        if (!email || !sub.trial_ends_at) continue
 
         const trialEnd = new Date(sub.trial_ends_at)
         const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
@@ -76,42 +81,56 @@ export async function GET(request: NextRequest) {
           .single()
 
         const reminderData = {
-          email: sub.email,
+          email,
           name: profile?.full_name || 'there',
           daysLeft,
           trialEndsAt: trialEnd,
         }
 
+        // Day 4 (3 days left) - Send "3 days left in your trial" reminder
+        if (daysLeft === 3 && !sub.day3_reminder_sent) {
+          const sent = await sendDay3Reminder(reminderData)
+          if (sent) {
+            results.day3Reminders++
+            await (supabase as any)
+              .from('subscriptions')
+              .update({ day3_reminder_sent: true })
+              .eq('user_id', sub.user_id)
+          }
+        }
+
         // Day 6 (1 day left) - Send "Your card will be charged tomorrow" reminder
         if (daysLeft === 1 && !sub.day1_reminder_sent) {
-          await sendDay1Reminder(reminderData)
-          results.day1Reminders++
-          
-          await (supabase as any)
-            .from('subscriptions')
-            .update({ day1_reminder_sent: true })
-            .eq('user_id', sub.user_id)
+          const sent = await sendDay1Reminder(reminderData)
+          if (sent) {
+            results.day1Reminders++
+            await (supabase as any)
+              .from('subscriptions')
+              .update({ day1_reminder_sent: true })
+              .eq('user_id', sub.user_id)
+          }
         }
 
         // Trial expired & payment failed - only send if status is still trialing after day 7
         // (Dodo auto-charges, so this only fires if payment failed)
         if (daysLeft <= -1 && sub.status === 'trialing' && !sub.expired_email_sent) {
-          await sendTrialExpiredEmail({ 
-            email: sub.email, 
+          const sent = await sendTrialExpiredEmail({ 
+            email, 
             name: profile?.full_name || 'there' 
           })
-          results.expiredEmails++
-          
-          await (supabase as any)
-            .from('subscriptions')
-            .update({ 
-              expired_email_sent: true,
-              status: 'payment_failed' 
-            })
-            .eq('user_id', sub.user_id)
+          if (sent) {
+            results.expiredEmails++
+            await (supabase as any)
+              .from('subscriptions')
+              .update({ 
+                expired_email_sent: true,
+                status: 'payment_failed' 
+              })
+              .eq('user_id', sub.user_id)
+          }
         }
       } catch (emailError: any) {
-        results.errors.push(`Failed for ${sub.email}: ${emailError.message}`)
+        results.errors.push(`Failed for ${sub.customer_email}: ${emailError.message}`)
       }
     }
 
